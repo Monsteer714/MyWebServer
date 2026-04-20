@@ -4,4 +4,5 @@ project(MyWebServer)
 set(CMAKE_CXX_STANDARD 20)
 
 add_executable(MyWebServer main.cpp
-        threadpool/threadpool.h)
+        threadpool/threadpool.h
+        webserver.h)

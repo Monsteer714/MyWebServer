@@ -15,7 +15,7 @@ private:
     size_t thread_num_ = {};
     size_t max_thread_num_ = {};
     std::vector<pthread_t> threads_ = {};
-    std::queue<T> task_queue_ = {};
+    std::queue<T*> task_queue_ = {};
     locker mutex_ = {};
     cond cond_ = {};
     sem sem_ = {};
@@ -40,6 +40,7 @@ private:
 
             tp->mutex_.unlock();
             task->process();
+            delete task;
         }
     }
 
@@ -63,14 +64,14 @@ public:
         }
     }
 
-    bool append(T task) {
+    bool append(T* task) {
         mutex_.lock();
 
         if (task_queue_.size() >= max_thread_num_) {
             mutex_.unlock();
             return false;
         }
-        
+
         task_queue_.push(task);
         mutex_.unlock();
         cond_.signal();

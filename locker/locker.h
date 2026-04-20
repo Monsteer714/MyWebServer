@@ -2,10 +2,9 @@
 // Created by Hanhong Wong on 2026/4/20.
 //
 
-#ifndef MYWEBSERVER_HTTP_CONN_H
-#define MYWEBSERVER_HTTP_CONN_H
+#ifndef MYWEBSERVER_LOCKER_H
+#define MYWEBSERVER_LOCKER_H
 
-#include <mutex>
 #include <pthread.h>
 #include <semaphore.h>
 
@@ -41,7 +40,7 @@ private:
 
 public:
     locker() {
-        pthread_mutex_init(&mutex_, NULL);
+        pthread_mutex_init(&mutex_, nullptr);
     }
 
     ~locker() {
@@ -67,7 +66,7 @@ private:
 
 public:
     cond() {
-        pthread_cond_init(&cond_, NULL);
+        pthread_cond_init(&cond_, nullptr);
     }
 
     ~cond() {
