@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>最小 Web 服务器</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .success {
+            color: #28a745;
+            font-size: 18px;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .info {
+            background: #e7f3ff;
+            padding: 15px;
+            border-left: 4px solid #007bff;
+            margin: 20px 0;
+        }
+        .code {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎉 恭喜！</h1>
+        <div class="success">
+            您的最小 Web 服务器运行成功！
+        </div>
+
+        <div class="info">
+            <h3>服务器信息：</h3>
+            <ul>
+                <li><strong>服务器类型：</strong>最小可行版本 Web 服务器</li>
+                <li><strong>支持功能：</strong>GET 请求、静态文件服务</li>
+                <li><strong>编程语言：</strong>C++</li>
+                <li><strong>当前时间：</strong><span id="time"></span></li>
+            </ul>
+        </div>
+
+        <div class="info">
+            <h3>测试其他页面：</h3>
+            <ul>
+                <li><a href="/test.html">测试页面</a></li>
+                <li><a href="/style.css">CSS 文件</a></li>
+                <li><a href="/script.js">JavaScript 文件</a></li>
+            </ul>
+        </div>
+
+        <div class="info">
+            <h3>如何改进：</h3>
+            <ul>
+                <li>添加多线程支持</li>
+                <li>实现 HTTP POST 请求</li>
+                <li>添加日志记录</li>
+                <li>支持更多文件类型</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        function updateTime() {
+            document.getElementById('time').textContent = new Date().toLocaleString('zh-CN');
+        }
+        updateTime();
+        setInterval(updateTime, 1000);
+    </script>
+</body>
+</html>
