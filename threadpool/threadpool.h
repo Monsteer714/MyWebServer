@@ -13,6 +13,7 @@ template <typename T>
 class Threadpool {
 private:
     size_t thread_num_ = {};
+    size_t max_thread_num_ = {};
     std::vector<pthread_t> threads_ = {};
     std::queue<T> task_queue_ = {};
     locker mutex_ = {};
@@ -43,8 +44,9 @@ private:
     }
 
 public:
-    Threadpool(size_t thread_num) {
+    Threadpool(size_t thread_num, size_t max_thread_num) {
         thread_num_ = thread_num;
+        max_thread_num_ = max_thread_num;
         threads_ = std::vector<pthread_t>(thread_num_);
         for (size_t i = 0; i < thread_num_; ++i) {
             if (pthread_create(&threads_[i], nullptr, worker, this) != 0) {
@@ -63,6 +65,12 @@ public:
 
     bool append(T task) {
         mutex_.lock();
+
+        if (task_queue_.size() >= max_thread_num_) {
+            mutex_.unlock();
+            return false;
+        }
+        
         task_queue_.push(task);
         mutex_.unlock();
         cond_.signal();
