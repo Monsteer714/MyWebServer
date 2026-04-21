@@ -13,8 +13,8 @@
 
 class WebServer {
 private:
-    Threadpool<http_conn>* thread_pool_;
-
+    Threadpool<http_conn>* thread_pool_ = {};
+    int server_fd_ = {};
 public:
     WebServer() {
         thread_pool_ = new Threadpool<http_conn>(4, 100);
@@ -24,26 +24,42 @@ public:
         delete thread_pool_;
     }
 
-    void run() {
-        int server_fd = socket(AF_INET, SOCK_STREAM, 0);
+    void start() {
+        server_fd_ = socket(AF_INET, SOCK_STREAM, 0);
+        if (server_fd_ < 0) {
+            perror("socket");
+            return;
+        }
 
         sockaddr_in addr{};
         addr.sin_family = AF_INET; // TCP
         addr.sin_port = htons(8888); // port
         addr.sin_addr.s_addr = INADDR_ANY; // 0?
 
-        bind(server_fd, (sockaddr*)&addr, sizeof(addr));
-        listen(server_fd, 128);
+        if (bind(server_fd_, (sockaddr*)&addr, sizeof(addr)) < 0) {
+            perror("bind");
+            close(server_fd_);
+            return;
+        }
+        if (listen(server_fd_, 128) < 0) {
+            perror("listen");
+            close(server_fd_);
+            return;
+        }
+    }
 
+    void loop() {
         while (true) {
-            int client_fd = accept(server_fd, nullptr, nullptr);
+            //TODO:epoll loop here
+            int client_fd = accept(server_fd_, nullptr, nullptr);
 
             if (client_fd < 0) {
                 std::cerr << "Accept failed" << std::endl;
+                close(server_fd_);
                 return;
             }
 
-            http_conn* conn = new http_conn(client_fd);
+            auto conn = new http_conn(client_fd);
             thread_pool_->append(conn);
         }
     }

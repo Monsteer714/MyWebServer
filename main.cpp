@@ -8,6 +8,7 @@
 
 int main() {
     WebServer server;
-    server.run();
+    server.start();
+    server.loop();
     return 0;
 }

@@ -10,7 +10,7 @@
 
 class sem {
 private:
-    sem_t sem_;
+    sem_t sem_ = {};
 
 public:
     sem() {
@@ -36,7 +36,7 @@ public:
 
 class locker {
 private:
-    pthread_mutex_t mutex_;
+    pthread_mutex_t mutex_ = {};
 
 public:
     locker() {
@@ -62,7 +62,7 @@ public:
 
 class cond {
 private:
-    pthread_cond_t cond_;
+    pthread_cond_t cond_ = {};
 
 public:
     cond() {
