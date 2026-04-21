@@ -7,8 +7,7 @@
 #include <iostream>
 #include <sys/socket.h>
 #include <arpa/inet.h>
-#include <fcntl.h>
-#include <cerrno>
+#include <unistd.h>
 
 #include "http_conn/http_conn.h"
 #include "threadpool/threadpool.h"
@@ -18,18 +17,14 @@ private:
     Threadpool<http_conn>* thread_pool_ = {};
     int server_fd_ = {};
 
-    void setNonBlocking(int fd) {
-        int flags = fcntl(fd, F_GETFL, 0);
-        fcntl(fd, F_SETFL, flags | O_NONBLOCK);
-    }
-
 public:
     WebServer() {
-        thread_pool_ = new Threadpool<http_conn>(4, 100);
+        thread_pool_ = new Threadpool<http_conn>(8, 10000);
     }
 
     ~WebServer() {
         delete thread_pool_;
+        if (server_fd_ >= 0) close(server_fd_);
     }
 
     void start() {
@@ -39,42 +34,44 @@ public:
             return;
         }
 
+        // 允许端口快速复用，避免压测重启时 "Address already in use"
+        int opt = 1;
+        setsockopt(server_fd_, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+
         sockaddr_in addr{};
-        addr.sin_family = AF_INET; // TCP
-        addr.sin_port = htons(8888); // port
-        addr.sin_addr.s_addr = INADDR_ANY; // 0?
+        addr.sin_family = AF_INET;
+        addr.sin_port = htons(8888);
+        addr.sin_addr.s_addr = INADDR_ANY;
 
         if (bind(server_fd_, (sockaddr*)&addr, sizeof(addr)) < 0) {
             perror("bind");
             close(server_fd_);
+            server_fd_ = -1;
             return;
         }
         if (listen(server_fd_, 128) < 0) {
             perror("listen");
             close(server_fd_);
+            server_fd_ = -1;
             return;
         }
-
-        setNonBlocking(server_fd_);
+        // server socket 保持阻塞：主线程阻塞在 accept() 等待连接即可，
+        // 无需自旋消耗 CPU。客户端 fd 也保持阻塞，worker 线程可安全读写。
     }
 
     void loop() {
         while (true) {
             int client_fd = accept(server_fd_, nullptr, nullptr);
-
             if (client_fd < 0) {
-                if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                    continue; // No pending connections, continue polling
-                } else {
-                    perror("accept");
-                    close(server_fd_);
-                    return;
-                }
+                perror("accept");
+                break;
             }
 
-            setNonBlocking(client_fd);
             auto conn = new http_conn(client_fd);
-            thread_pool_->append(conn);
+            // Bug fix: append 失败（队列满）时必须释放，否则内存泄漏
+            if (!thread_pool_->append(conn)) {
+                delete conn;
+            }
         }
     }
 };

@@ -10,20 +10,31 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <cerrno>
 
 class http_conn {
 private:
     int client_fd_;
+
+
+    // Close the client fd if it's valid and mark it as closed.
+    void close_fd() {
+        if (client_fd_ >= 0) {
+            ::close(client_fd_);
+            client_fd_ = -1;
+        }
+    }
+
 public:
     http_conn(int client_fd) {
         client_fd_ = client_fd;
     };
 
     ~http_conn() {
-        close(client_fd_);
+        close_fd();
     }
 
-    std::string read_file(const std::string& path) {
+    static std::string read_file(const std::string& path) {
         std::ifstream file(path);
         if (!file.is_open()) {
             return "";
@@ -33,24 +44,43 @@ public:
         return ss.str();
     }
 
+    // process may modify the fd state (close it), so it cannot be const.
     void process() {
         if (client_fd_ < 0) {
             std::cerr << "Invalid client fd" << std::endl;
             return;
         }
 
-        std::cout << "Client connected" << std::endl;
-
         std::string request;
         char buffer[1024];
         while (true) {
-            int n = read(client_fd_, buffer, sizeof(buffer));
-            if (n <= 0) {
-                close(client_fd_);
+            ssize_t n = ::read(client_fd_, buffer, sizeof(buffer));
+            if (n < 0) {
+                if (errno == EINTR) {
+                    continue; // interrupted, retry
+                }
+                if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                    break; // No more data to read right now
+                }
+                else {
+                    perror("read");
+                    close_fd();
+                    return;
+                }
+            }
+            else if (n == 0) {
+                // Client closed the connection
+                close_fd();
                 return;
             }
             request.append(buffer, n);
             if (request.find("\r\n\r\n") != std::string::npos) break;
+        }
+
+        if (request.empty()) {
+            std::cerr << "Empty request received" << std::endl;
+            close_fd();
+            return;
         }
 
         size_t pos = request.find("\r\n");
@@ -69,7 +99,7 @@ public:
             if (path.find("..") != std::string::npos) {
                 std::string resp = "HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\n\r\n";
                 write(client_fd_, resp.c_str(), resp.length());
-                close(client_fd_);
+                close_fd();
                 return;
             }
 
@@ -93,12 +123,37 @@ public:
                     "\r\n";
             }
 
-            write(client_fd_, resp.c_str(), resp.length());
-
+            ssize_t bytes_written = 0;
+            const char* data = resp.c_str();
+            size_t total = resp.length();
+            while (static_cast<size_t>(bytes_written) < total) {
+                ssize_t n = ::write(client_fd_, data + bytes_written, total - bytes_written);
+                if (n < 0) {
+                    if (errno == EINTR) {
+                        continue; // interrupted, retry
+                    }
+                    if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                        // In a real non-blocking server we'd wait for the socket to become writable.
+                        // For this simple server just retry briefly.
+                        sched_yield();
+                        continue;
+                    }
+                    else {
+                        perror("write");
+                        close_fd();
+                        return;
+                    }
+                }
+                bytes_written += n;
+            }
         }
-        close(client_fd_);
-    }
 
+        // Ensure all data is flushed before closing the connection
+        if (client_fd_ >= 0) {
+            shutdown(client_fd_, SHUT_WR);
+        }
+        close_fd();
+    }
 };
 
 #endif //MYWEBSERVER_HTTP_CONN_H

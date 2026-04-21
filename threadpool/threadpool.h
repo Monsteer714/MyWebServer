@@ -38,7 +38,8 @@ private:
             auto task = tp->task_queue_.front();
             tp->task_queue_.pop();
 
-            tp->mutex_.unlock();
+            tp->mutex_.unlock()
+            ;
             task->process();
             delete task;
         }
