@@ -16,7 +16,6 @@ class http_conn {
 private:
     int client_fd_;
 
-
     // Close the client fd if it's valid and mark it as closed.
     void close_fd() {
         if (client_fd_ >= 0) {
