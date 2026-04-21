@@ -7,6 +7,8 @@
 #include <iostream>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <fcntl.h>
+#include <cerrno>
 
 #include "http_conn/http_conn.h"
 #include "threadpool/threadpool.h"
@@ -15,6 +17,12 @@ class WebServer {
 private:
     Threadpool<http_conn>* thread_pool_ = {};
     int server_fd_ = {};
+
+    void setNonBlocking(int fd) {
+        int flags = fcntl(fd, F_GETFL, 0);
+        fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+    }
+
 public:
     WebServer() {
         thread_pool_ = new Threadpool<http_conn>(4, 100);
@@ -46,19 +54,25 @@ public:
             close(server_fd_);
             return;
         }
+
+        setNonBlocking(server_fd_);
     }
 
     void loop() {
         while (true) {
-            //TODO:epoll loop here
             int client_fd = accept(server_fd_, nullptr, nullptr);
 
             if (client_fd < 0) {
-                std::cerr << "Accept failed" << std::endl;
-                close(server_fd_);
-                return;
+                if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                    continue; // No pending connections, continue polling
+                } else {
+                    perror("accept");
+                    close(server_fd_);
+                    return;
+                }
             }
 
+            setNonBlocking(client_fd);
             auto conn = new http_conn(client_fd);
             thread_pool_->append(conn);
         }
