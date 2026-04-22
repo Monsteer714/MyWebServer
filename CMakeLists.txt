@@ -8,6 +8,9 @@ endif()
 
 find_package(Threads REQUIRED)
 
+# Ensure proper linking for epoll support
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
+
 # 多线程版本（线程池）
 add_executable(server main.cpp
         threadpool/threadpool.h
