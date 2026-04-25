@@ -6,6 +6,7 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <csignal>
 
 #include "http_conn/http_conn.h"
 
@@ -34,6 +35,8 @@ int main() {
         close(server_fd);
         return 1;
     }
+
+    signal(SIGPIPE, SIG_IGN);
 
     std::cout << "[single-thread] Listening on port 8888..." << std::endl;
 

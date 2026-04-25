@@ -18,7 +18,6 @@ private:
     std::queue<T*> task_queue_ = {};
     locker mutex_ = {};
     cond cond_ = {};
-    sem sem_ = {};
     bool shutdown_ = {};
 
     static void* worker(void* arg) {
@@ -38,8 +37,7 @@ private:
             auto task = tp->task_queue_.front();
             tp->task_queue_.pop();
 
-            tp->mutex_.unlock()
-            ;
+            tp->mutex_.unlock();
             task->process();
             delete task;
         }
@@ -50,8 +48,14 @@ public:
         thread_num_ = thread_num;
         max_thread_num_ = max_thread_num;
         threads_ = std::vector<pthread_t>(thread_num_);
-        for (size_t i = 0; i < thread_num_; ++i) {
+        size_t created = 0;
+        for (size_t i = 0; i < thread_num_; ++i, ++created) {
             if (pthread_create(&threads_[i], nullptr, worker, this) != 0) {
+                shutdown_ = true;
+                cond_.broadcast();
+                for (size_t j = 0; j < created; ++j) {
+                    pthread_join(threads_[j], nullptr);
+                }
                 throw std::runtime_error("pthread_create failed");
             }
         }

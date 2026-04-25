@@ -66,6 +66,7 @@ public:
         addr.sin_family = AF_INET;
         addr.sin_port = htons(8888);
         addr.sin_addr.s_addr = INADDR_ANY;
+        memset(addr.sin_zero, '\0', sizeof addr.sin_zero);
 
         if (bind(server_fd_, (sockaddr*)&addr, sizeof(addr)) < 0) {
             perror("bind");
@@ -87,6 +88,7 @@ public:
             perror("epoll_create1");
             return;
         }
+        http_conn::m_epollfd_ = epoll_fd_;
 
         epollAddServer(server_fd_);
     }
