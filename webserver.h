@@ -122,9 +122,14 @@ public:
 
                         epollAdd(client_fd);
                     }
-                } else { // 读写请求
+                } else if (events[i].events & EPOLLIN){ // 读写请求
                     auto conn = new http_conn(fd);
-                    if (!thread_pool_->append(conn)) {
+                    if (!thread_pool_->append_s(conn, 0)) {
+                        delete conn;
+                    }
+                } else if (events[i].events & EPOLLOUT) {
+                    auto conn = new http_conn(fd);
+                    if (!thread_pool_->append_s(conn, 1)) {
                         delete conn;
                     }
                 }

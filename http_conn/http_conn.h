@@ -20,7 +20,7 @@
 class http_conn {
 public:
     constexpr static int READ_BUFFER_SIZE = 1024;
-    constexpr static int WRITE_BUFFER_SIZE = 1024;
+    constexpr static int WRITE_BUFFER_SIZE = 10240;
 
     enum METHOD {
         GET = 0,
@@ -60,6 +60,7 @@ private:
     METHOD m_method_ = {};
     CHECK_STATE m_check_state_ = {};
     char m_read_buffer_[READ_BUFFER_SIZE] = {};
+    char m_write_buffer_[WRITE_BUFFER_SIZE] = {};
 
     // Close the client fd if it's valid and mark it as closed.
     void close_fd() {
@@ -75,6 +76,7 @@ private:
 
 public:
     inline static int m_epollfd_ = -1;
+    int m_state_;//0:read, 1:write
 
 public:
     http_conn(int client_fd) {
@@ -82,7 +84,6 @@ public:
     };
 
     ~http_conn() {
-        close_fd();
     }
 
     static std::string read_file(const std::string& path) {
@@ -251,20 +252,33 @@ public:
 
     void process_write(HTTP_CODE http_code) {
         std::string response;
+        std::string body = read_file(m_index_path_);
         switch (http_code) {
         case BAD_REQUEST:
-            response = "HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n\r\n";
+            response = "HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
+            for (int i = 0; i < response.length(); i++) {
+                m_write_buffer_[i] = response[i];
+            }
             break;
         case GET_REQUEST:
-            response = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n" + read_file(m_index_path_);
+            response = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: " + std::to_string(body.size()) +
+                "\r\nConnection: close\r\n\r\n" + body;
+            for (int i = 0; i < response.length(); i++) {
+                m_write_buffer_[i] = response[i];
+            }
             break;
         default:
-            response = "HTTP/1.1 500 Internal Server Error\r\nContent-Length: 0\r\n\r\n";
+            response = "HTTP/1.1 500 Internal Server Error\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
+            for (int i = 0; i < response.length(); i++) {
+                m_write_buffer_[i] = response[i];
+            }
             break;
         }
-        write(m_client_fd_, response.c_str(), response.size());
     }
 
+    void write_once() {
+        write(m_client_fd_, m_write_buffer_, sizeof(m_write_buffer_));
+    }
 
     // process may modify the fd state (close it), so it cannot be const.
     void process() {
@@ -279,8 +293,8 @@ public:
             modfd(m_epollfd_, m_client_fd_, EPOLLIN);
             return;
         }
-        modfd(m_epollfd_, m_client_fd_, EPOLLOUT);
         process_write(ret);
+        modfd(m_epollfd_, m_client_fd_, EPOLLOUT);
         // Ensure all data is flushed before closing the connection
         if (m_client_fd_ >= 0) {
             shutdown(m_client_fd_, SHUT_WR);
