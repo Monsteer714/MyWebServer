@@ -38,13 +38,7 @@ private:
             tp->task_queue_.pop();
 
             tp->mutex_.unlock();
-            if (task->m_state_ == 0) {
-                if (task->read_once()) {
-                    task->process();
-                }
-            } else {
-                task->write_once();
-            }
+            task->process();
         }
     }
 
@@ -95,7 +89,6 @@ public:
             mutex_.unlock();
             return false;
         }
-        task->m_state_ = state;
         task_queue_.push(task);
         mutex_.unlock();
         cond_.signal();
