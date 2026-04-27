@@ -11,6 +11,11 @@
 #include <sstream>
 #include <string>
 #include <cerrno>
+#include <sys/uio.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <sys/epoll.h>
 
 class http_conn {
 public:
@@ -43,11 +48,15 @@ public:
 
 private:
     int m_client_fd_ = {};
+    bool m_linger_ = {};
     ssize_t m_read_idx_ = {}; //read_buffer下一位填充的起始序号，也即read_buffer可读数据最后一位的下一位
     ssize_t m_check_idx_ = {};
     ssize_t m_start_line_ = {};
+    ssize_t m_content_length_ = {};
+    std::string m_host_ = {};
     std::string m_path = {};
     std::string m_version = {};
+    std::string m_index_path_ = "./root/index.html";
     METHOD m_method_ = {};
     CHECK_STATE m_check_state_ = {};
     char m_read_buffer_[READ_BUFFER_SIZE] = {};
@@ -63,8 +72,10 @@ private:
     char* get_line() {
         return m_read_buffer_ + m_start_line_;
     }
+
 public:
-    static int m_epollfd_;
+    inline static int m_epollfd_ = -1;
+
 public:
     http_conn(int client_fd) {
         m_client_fd_ = client_fd;
@@ -85,12 +96,13 @@ public:
     }
 
     bool modfd(int epfd, int fd, int ev) {
-        epoll_event ev;
-        ev.data.fd = fd;
+        epoll_event event;
+        event.data.fd = fd;
 
-        ev.events = ev | EPOLLET | EPOLLONESHOT;
+        event.events = ev | EPOLLET | EPOLLONESHOT;
 
-        epoll_ctl(epfd, EPOLL_CTL_MOD, fd, &ev);
+        epoll_ctl(epfd, EPOLL_CTL_MOD, fd, &event);
+        return true;
     }
 
     bool read_once() {
@@ -165,6 +177,9 @@ public:
                 if (ret == BAD_REQUEST) {
                     return BAD_REQUEST;
                 }
+                if (ret == GET_REQUEST) {
+                    return GET_REQUEST;
+                }
                 break;
             case CHECK_CONTENT:
                 ret = parse_content_line(text);
@@ -173,7 +188,7 @@ public:
                 }
                 break;
             default:
-
+                return INTERNAL_ERROR;
                 break;
             }
         }
@@ -186,31 +201,70 @@ public:
         ss >> method >> path >> version;
         if (method == "GET") {
             m_method_ = GET;
-        } else if (method == "POST") {
+        }
+        else if (method == "POST") {
             m_method_ = POST;
-        } else {
+        }
+        else {
             return BAD_REQUEST;
         }
         m_path = path;
         m_version = version;
         m_check_state_ = CHECK_HEADER;
-        if (m_method_ == GET) {
-            return GET_REQUEST;
-        }
         return NO_REQUEST;
     }
 
     HTTP_CODE parse_header_line(char* text) {
-        return HTTP_CODE{};
+        if (text[0] == '\0') {
+            if (m_content_length_ > 0) {
+                m_check_state_ = CHECK_CONTENT;
+                return NO_REQUEST;
+            }
+            return GET_REQUEST;
+        }
+        if (strncasecmp(text, "Content-Length:", 15) == 0) {
+            text += 15;
+            text += strspn(text, " \t");
+            m_content_length_ = atol(text);
+        }
+        else if (strncasecmp(text, "Host:", 5) == 0) {
+            text += 5;
+            text += strspn(text, " \t");
+            m_host_ = text;
+        }
+        else if (strncasecmp(text, "Connection:", 13) == 0) {
+            text += 13;
+            text += strspn(text, " \t");
+            std::string connection = text;
+            if (strncasecmp(connection.c_str(), "keep-alive", 10) == 0) {
+                m_linger_ = true;
+            }
+        }
+        else {
+        }
+        return NO_REQUEST;
     }
 
     HTTP_CODE parse_content_line(char* text) {
         return HTTP_CODE{};
     }
 
-    void process_write() {
-
+    void process_write(HTTP_CODE http_code) {
+        std::string response;
+        switch (http_code) {
+        case BAD_REQUEST:
+            response = "HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n\r\n";
+            break;
+        case GET_REQUEST:
+            response = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n" + read_file(m_index_path_);
+            break;
+        default:
+            response = "HTTP/1.1 500 Internal Server Error\r\nContent-Length: 0\r\n\r\n";
+            break;
+        }
+        write(m_client_fd_, response.c_str(), response.size());
     }
+
 
     // process may modify the fd state (close it), so it cannot be const.
     void process() {
@@ -220,11 +274,13 @@ public:
         }
 
         read_once();
-        if (process_read() == NO_REQUEST) {
+        auto ret = process_read();
+        if (ret == NO_REQUEST) {
             modfd(m_epollfd_, m_client_fd_, EPOLLIN);
             return;
         }
-        std::cout << m_path << " " << m_version << std::endl;
+        modfd(m_epollfd_, m_client_fd_, EPOLLOUT);
+        process_write(ret);
         // Ensure all data is flushed before closing the connection
         if (m_client_fd_ >= 0) {
             shutdown(m_client_fd_, SHUT_WR);

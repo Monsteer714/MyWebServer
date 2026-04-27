@@ -39,7 +39,6 @@ private:
 
             tp->mutex_.unlock();
             task->process();
-            delete task;
         }
     }
 
