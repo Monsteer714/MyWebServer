@@ -13,6 +13,7 @@
 #include <sys/epoll.h>
 
 #include "http_conn/http_conn.h"
+#include "log/log.h"
 #include "threadpool/threadpool.h"
 
 class WebServer {
@@ -39,6 +40,10 @@ private:
         ev.data.fd = fd;
         ev.events = EPOLLIN;
         epoll_ctl(epoll_fd_, EPOLL_CTL_ADD, fd, &ev);
+    }
+
+    void createLog() {
+        Log::getInstance()->init("./ServerLog", 0, 2048, 5000000, 800);
     }
 public:
     WebServer() {
@@ -91,6 +96,10 @@ public:
         http_conn::m_epollfd_ = epoll_fd_;
 
         epollAddServer(server_fd_);
+
+        createLog();
+
+        Log::LOG_INFO("Web server started on port %d", 8888);
     }
 
     void loop() {

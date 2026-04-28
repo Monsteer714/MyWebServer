@@ -13,6 +13,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
 
 # 多线程版本（线程池）
 add_executable(server main.cpp
+        log/log.cpp
         threadpool/threadpool.h
         webserver.h)
 target_link_libraries(server Threads::Threads)

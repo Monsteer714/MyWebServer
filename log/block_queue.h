@@ -50,7 +50,7 @@ public:
         mutex_.lock();
 
         while (queue_.empty()) {
-            if (cond_.wait(mutex_.getMutex()) != 0) {
+            if (!cond_.wait(mutex_.getMutex())) {
                 mutex_.unlock();
                 return false;
             }
@@ -62,6 +62,13 @@ public:
         cond_.signal();
         mutex_.unlock();
         return true;
+    }
+
+    bool is_full() {
+        mutex_.lock();
+        bool res = queue_.size() >= max_size_;
+        mutex_.unlock();
+        return res;
     }
 };
 

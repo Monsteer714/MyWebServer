@@ -16,6 +16,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <sys/epoll.h>
+#include "../log/log.h"
 
 class http_conn {
 public:
@@ -165,6 +166,7 @@ public:
         char* text = {};
         while ((line_state = parse_line()) == LINE_OK) {
             text = get_line();
+            LOG_INFO("%s", text);
             m_start_line_ = m_check_idx_;
             switch (m_check_state_) {
             case CHECK_REQUEST:
