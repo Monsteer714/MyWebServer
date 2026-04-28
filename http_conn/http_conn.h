@@ -76,7 +76,7 @@ private:
 
 public:
     inline static int m_epollfd_ = -1;
-    int m_state_;//0:read, 1:
+    int m_state_; //0:read, 1:
 
 public:
     http_conn(int client_fd) {
