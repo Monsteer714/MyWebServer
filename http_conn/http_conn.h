@@ -10,11 +10,12 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <cstring>
+#include <strings.h>
 #include <cerrno>
 #include <sys/uio.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <unistd.h>
 #include <sys/epoll.h>
 #include "../log/log.h"
 

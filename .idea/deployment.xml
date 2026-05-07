@@ -1,12 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="PublishConfigData" autoUpload="Always" serverName="cs144 (a209f79f-9bb2-4c8c-8ded-72a828fa8499)" remoteFilesAllowedToDisappearOnAutoupload="false" confirmBeforeUploading="false">
+  <component name="PublishConfigData" autoUpload="Always" serverName="ali" remoteFilesAllowedToDisappearOnAutoupload="false" confirmBeforeUploading="false">
     <option name="confirmBeforeUploading" value="false" />
     <serverData>
-      <paths name="cs144 (a209f79f-9bb2-4c8c-8ded-72a828fa8499)">
+      <paths name="ali">
         <serverdata>
           <mappings>
-            <mapping deploy="/MyWebServer" local="$PROJECT_DIR$" web="/" />
+            <mapping deploy="/MyWebserver" local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="cs144">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/root/MyWebServer" local="$PROJECT_DIR$" web="/" />
           </mappings>
         </serverdata>
       </paths>

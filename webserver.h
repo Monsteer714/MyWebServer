@@ -4,6 +4,7 @@
 
 #ifndef MYWEBSERVER_WEBSERVER_H
 #define MYWEBSERVER_WEBSERVER_H
+#include <cassert>
 #include <iostream>
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -15,15 +16,23 @@
 #include "http_conn/http_conn.h"
 #include "log/log.h"
 #include "threadpool/threadpool.h"
+#include "timer/timer_lst.h"
+
 
 class WebServer {
 private:
-    Threadpool<http_conn>* thread_pool_ = {};
-    int max_threads_num_ = {};
+    //threadpool
+    Threadpool<http_conn>* m_thread_pool_ = {};
+    int m_max_threads_num_ = {};
 
-    int server_fd_ = {-1};
-    int epoll_fd_ = {-1};
-    size_t max_events_num_ = 1024;
+    //epoll
+    int m_server_fd_ = {-1};
+    int m_epoll_fd_ = {-1};
+    size_t m_max_events_num_ = 1024;
+
+    //timer
+    Util m_util_ = {};
+    int m_pipe_fd_[2] = {};
 
     void setNonBlocking(int fd) {
         int flags = fcntl(fd, F_GETFL, 0);
@@ -34,14 +43,14 @@ private:
         epoll_event ev{};
         ev.data.fd = fd;
         ev.events = EPOLLIN | EPOLLONESHOT;
-        epoll_ctl(epoll_fd_, EPOLL_CTL_ADD, fd, &ev);
+        epoll_ctl(m_epoll_fd_, EPOLL_CTL_ADD, fd, &ev);
     }
 
     void epollAddServer(int fd) {
         epoll_event ev{};
         ev.data.fd = fd;
         ev.events = EPOLLIN;
-        epoll_ctl(epoll_fd_, EPOLL_CTL_ADD, fd, &ev);
+        epoll_ctl(m_epoll_fd_, EPOLL_CTL_ADD, fd, &ev);
     }
 
     void createLog() {
@@ -49,25 +58,22 @@ private:
     }
 public:
     WebServer() {
-        thread_pool_ = new Threadpool<http_conn>(8, 10000);
+        m_thread_pool_ = new Threadpool<http_conn>(8, 10000);
     }
 
     ~WebServer() {
-        delete thread_pool_;
-        if (epoll_fd_ >= 0) close(epoll_fd_);
-        if (server_fd_ >= 0) close(server_fd_);
+        delete m_thread_pool_;
+        if (m_epoll_fd_ >= 0) close(m_epoll_fd_);
+        if (m_server_fd_ >= 0) close(m_server_fd_);
     }
 
     void start() {
-        server_fd_ = socket(AF_INET, SOCK_STREAM, 0);
-        if (server_fd_ < 0) {
-            perror("socket");
-            return;
-        }
+        m_server_fd_ = socket(AF_INET, SOCK_STREAM, 0);
+        assert(m_server_fd_ >= 0);
 
         // 允许端口快速复用，避免压测重启时 "Address already in use"
         int opt = 1;
-        setsockopt(server_fd_, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+        setsockopt(m_server_fd_, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
 
         sockaddr_in addr{};
         addr.sin_family = AF_INET;
@@ -75,29 +81,23 @@ public:
         addr.sin_addr.s_addr = INADDR_ANY;
         memset(addr.sin_zero, '\0', sizeof addr.sin_zero);
 
-        if (bind(server_fd_, (sockaddr*)&addr, sizeof(addr)) < 0) {
-            perror("bind");
-            close(server_fd_);
-            server_fd_ = -1;
-            return;
-        }
-        if (listen(server_fd_, 1000) < 0) {
-            perror("listen");
-            close(server_fd_);
-            server_fd_ = -1;
-            return;
-        }
+        int ret = bind(m_server_fd_, (sockaddr*)&addr, sizeof(addr));
+        assert(ret >= 0);
+        ret = listen(m_server_fd_, 1024);
+        assert(ret >= 0);
 
-        setNonBlocking(server_fd_);
+        setNonBlocking(m_server_fd_);
 
-        epoll_fd_ = epoll_create1(0);
-        if (epoll_fd_ < 0) {
-            perror("epoll_create1");
-            return;
-        }
-        http_conn::m_epollfd_ = epoll_fd_;
+        m_epoll_fd_ = epoll_create1(0);
+        assert(m_epoll_fd_ >= 0);
 
-        epollAddServer(server_fd_);
+        http_conn::m_epollfd_ = m_epoll_fd_;
+
+        socketpair(AF_UNIX, SOCK_STREAM, 0, m_pipe_fd_);
+        Util::u_epoll_fd_ = m_epoll_fd_;
+        Util::u_pipe_fd_ = m_pipe_fd_;
+
+        epollAddServer(m_server_fd_);
 
         createLog();
 
@@ -105,9 +105,9 @@ public:
     }
 
     void loop() {
-        std::vector<epoll_event> events(max_events_num_);
+        std::vector<epoll_event> events(m_max_events_num_);
         while (true) {
-            int n = epoll_wait(epoll_fd_, events.data(), max_events_num_, -1);
+            int n = epoll_wait(m_epoll_fd_, events.data(), m_max_events_num_, -1);
             if (n < 0) {
                 if (errno == EINTR) {
                     continue; // 被信号中断，继续等待
@@ -118,9 +118,9 @@ public:
 
             for (int i = 0; i < n; ++i) {
                 int fd = events[i].data.fd;
-                if (fd == server_fd_) { // 新连接
+                if (fd == m_server_fd_) { // 新连接
                     while (true) {
-                        int client_fd = accept(server_fd_, nullptr, nullptr);
+                        int client_fd = accept(m_server_fd_, nullptr, nullptr);
                         if (client_fd < 0) {
                             if (errno == EAGAIN || errno == EWOULDBLOCK) {
                                 break;
@@ -133,9 +133,11 @@ public:
 
                         epollAdd(client_fd);
                     }
+                } else if ((fd == m_pipe_fd_[0]) && (events[i].events & EPOLLIN)) {
+                    //sig信号处理
                 } else {
                     auto conn = new http_conn(fd);
-                    if (!thread_pool_->append(conn)) {
+                    if (!m_thread_pool_->append(conn)) {
                         delete conn;
                     }
                 }
