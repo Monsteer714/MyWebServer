@@ -19,6 +19,8 @@
 class WebServer {
 private:
     Threadpool<http_conn>* thread_pool_ = {};
+    int max_threads_num_ = {};
+
     int server_fd_ = {-1};
     int epoll_fd_ = {-1};
     size_t max_events_num_ = 1024;
