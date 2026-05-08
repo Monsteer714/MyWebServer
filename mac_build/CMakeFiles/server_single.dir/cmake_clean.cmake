@@ -1,8 +1,6 @@
 file(REMOVE_RECURSE
   "CMakeFiles/server_single.dir/log/log.cpp.o"
   "CMakeFiles/server_single.dir/log/log.cpp.o.d"
-  "CMakeFiles/server_single.dir/main_single.cpp.o"
-  "CMakeFiles/server_single.dir/main_single.cpp.o.d"
   "CMakeFiles/server_single.dir/timer/timer_lst.cpp.o"
   "CMakeFiles/server_single.dir/timer/timer_lst.cpp.o.d"
   "server_single"

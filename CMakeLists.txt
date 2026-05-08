@@ -42,8 +42,3 @@ add_executable(server main.cpp
         webserver.h)
 target_link_libraries(server Threads::Threads ${EPOLL_SHIM_LIB})
 
-# 单线程对照版本（无线程池）
-add_executable(server_single main_single.cpp
-        log/log.cpp
-        timer/timer_lst.cpp)
-target_link_libraries(server_single Threads::Threads ${EPOLL_SHIM_LIB})

@@ -129,26 +129,12 @@ server/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/server.dir/build.make CMakeFiles/server.dir/build
 .PHONY : server/fast
 
-#=============================================================================
-# Target rules for targets named server_single
-
-# Build rule for target.
-server_single: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 server_single
-.PHONY : server_single
-
-# fast build rule for target.
-server_single/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/server_single.dir/build.make CMakeFiles/server_single.dir/build
-.PHONY : server_single/fast
-
 log/log.o: log/log.cpp.o
 .PHONY : log/log.o
 
 # target to build an object file
 log/log.cpp.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/server.dir/build.make CMakeFiles/server.dir/log/log.cpp.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/server_single.dir/build.make CMakeFiles/server_single.dir/log/log.cpp.o
 .PHONY : log/log.cpp.o
 
 log/log.i: log/log.cpp.i
@@ -157,7 +143,6 @@ log/log.i: log/log.cpp.i
 # target to preprocess a source file
 log/log.cpp.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/server.dir/build.make CMakeFiles/server.dir/log/log.cpp.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/server_single.dir/build.make CMakeFiles/server_single.dir/log/log.cpp.i
 .PHONY : log/log.cpp.i
 
 log/log.s: log/log.cpp.s
@@ -166,7 +151,6 @@ log/log.s: log/log.cpp.s
 # target to generate assembly for a file
 log/log.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/server.dir/build.make CMakeFiles/server.dir/log/log.cpp.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/server_single.dir/build.make CMakeFiles/server_single.dir/log/log.cpp.s
 .PHONY : log/log.cpp.s
 
 main.o: main.cpp.o
@@ -193,37 +177,12 @@ main.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/server.dir/build.make CMakeFiles/server.dir/main.cpp.s
 .PHONY : main.cpp.s
 
-main_single.o: main_single.cpp.o
-.PHONY : main_single.o
-
-# target to build an object file
-main_single.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/server_single.dir/build.make CMakeFiles/server_single.dir/main_single.cpp.o
-.PHONY : main_single.cpp.o
-
-main_single.i: main_single.cpp.i
-.PHONY : main_single.i
-
-# target to preprocess a source file
-main_single.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/server_single.dir/build.make CMakeFiles/server_single.dir/main_single.cpp.i
-.PHONY : main_single.cpp.i
-
-main_single.s: main_single.cpp.s
-.PHONY : main_single.s
-
-# target to generate assembly for a file
-main_single.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/server_single.dir/build.make CMakeFiles/server_single.dir/main_single.cpp.s
-.PHONY : main_single.cpp.s
-
 timer/timer_lst.o: timer/timer_lst.cpp.o
 .PHONY : timer/timer_lst.o
 
 # target to build an object file
 timer/timer_lst.cpp.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/server.dir/build.make CMakeFiles/server.dir/timer/timer_lst.cpp.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/server_single.dir/build.make CMakeFiles/server_single.dir/timer/timer_lst.cpp.o
 .PHONY : timer/timer_lst.cpp.o
 
 timer/timer_lst.i: timer/timer_lst.cpp.i
@@ -232,7 +191,6 @@ timer/timer_lst.i: timer/timer_lst.cpp.i
 # target to preprocess a source file
 timer/timer_lst.cpp.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/server.dir/build.make CMakeFiles/server.dir/timer/timer_lst.cpp.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/server_single.dir/build.make CMakeFiles/server_single.dir/timer/timer_lst.cpp.i
 .PHONY : timer/timer_lst.cpp.i
 
 timer/timer_lst.s: timer/timer_lst.cpp.s
@@ -241,7 +199,6 @@ timer/timer_lst.s: timer/timer_lst.cpp.s
 # target to generate assembly for a file
 timer/timer_lst.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/server.dir/build.make CMakeFiles/server.dir/timer/timer_lst.cpp.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/server_single.dir/build.make CMakeFiles/server_single.dir/timer/timer_lst.cpp.s
 .PHONY : timer/timer_lst.cpp.s
 
 # Help Target
@@ -253,16 +210,12 @@ help:
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
 	@echo "... server"
-	@echo "... server_single"
 	@echo "... log/log.o"
 	@echo "... log/log.i"
 	@echo "... log/log.s"
 	@echo "... main.o"
 	@echo "... main.i"
 	@echo "... main.s"
-	@echo "... main_single.o"
-	@echo "... main_single.i"
-	@echo "... main_single.s"
 	@echo "... timer/timer_lst.o"
 	@echo "... timer/timer_lst.i"
 	@echo "... timer/timer_lst.s"

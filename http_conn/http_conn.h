@@ -52,6 +52,7 @@ private:
     int m_client_fd_ = {};
     bool m_linger_ = {};
     ssize_t m_read_idx_ = {}; //read_buffer下一位填充的起始序号，也即read_buffer可读数据最后一位的下一位
+    ssize_t m_write_idx_ = {};
     ssize_t m_check_idx_ = {};
     ssize_t m_start_line_ = {};
     ssize_t m_content_length_ = {};
@@ -66,11 +67,11 @@ private:
 
 
     void removefd(int epollfd, int fd) {
-        epoll_ctl(epollfd, EPOLL_CTL_DEL, fd, NULL);
+        epoll_ctl(epollfd, EPOLL_CTL_DEL, fd, nullptr);
     }
 
     // Close the client fd if it's valid and mark it as closed.
-    void close_fd(int fd) {
+    void close_fd(int &fd) {
         if (fd >= 0) {
             ::close(fd);
             fd = -1;
@@ -112,7 +113,7 @@ public:
     }
 
     bool modfd(int epfd, int fd, int ev) {
-        epoll_event event;
+        epoll_event event = {};
         event.data.fd = fd;
 
         event.events = ev | EPOLLET | EPOLLONESHOT;
@@ -266,6 +267,14 @@ public:
         return HTTP_CODE{};
     }
 
+    bool add_response(const char* format, ...) {
+        va_list args;
+        va_start(args, format);
+
+
+        va_end(args);
+    }
+
     bool process_write(HTTP_CODE http_code) {
         bool ret = false;
         std::string response;
@@ -287,12 +296,15 @@ public:
         }
         response += '\0';
         m_write_buffer_ = response;
+        LOG_INFO("%s", "processed_write")
         return ret;
     }
 
     bool write() {
         ::write(m_client_fd_, m_write_buffer_.c_str(), m_write_buffer_.size());
-        return true;
+        modfd(m_epollfd_, m_client_fd_, EPOLLIN);
+        LOG_INFO("%s", "write");
+        return false;
     }
 
     // process may modify the fd state (close it), so it cannot be const.
@@ -302,7 +314,6 @@ public:
             return;
         }
 
-        read_once();
         auto read_ret = process_read();
         if (read_ret == NO_REQUEST) {
             modfd(m_epollfd_, m_client_fd_, EPOLLIN);
@@ -310,6 +321,7 @@ public:
         }
         auto write_ret = process_write(read_ret);
         if (!write_ret) {
+            LOG_INFO("%s", "write error");
             close_conn();
         }
         // Ensure all data is flushed before closing the connection

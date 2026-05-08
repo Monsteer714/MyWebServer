@@ -149,19 +149,22 @@ public:
 
                         epollAdd(client_fd);
 
-                        createConn(fd);
+                        createConn(client_fd);
                     }
                 } else if (events[i].events & (EPOLLERR | EPOLLHUP | EPOLLRDHUP)) {
+                    close(fd);
                     //错误，关闭连接；
                 } else if ((fd == m_pipe_fd_[0]) && (events[i].events & EPOLLIN)) {
                     //sig信号处理
                 } else if (events[i].events & EPOLLIN){
                     auto conn = m_user_ + fd;
+                    LOG_INFO("%s", "epollin in webserver loop");
                     if (!m_thread_pool_->append_s(conn, 0)) {
                         delete conn;
                     }
                 } else if (events[i].events & EPOLLOUT) {
                     auto conn = m_user_ + fd;
+                    LOG_INFO("%s", "epollout in webserver loop");
                     if (!m_thread_pool_->append_s(conn, 1)) {
                         delete conn;
                     }

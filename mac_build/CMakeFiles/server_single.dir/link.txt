@@ -1,1 +1,1 @@
-/usr/bin/c++  -pthread -O3 -DNDEBUG -arch x86_64 -Wl,-search_paths_first -Wl,-headerpad_max_install_names CMakeFiles/server_single.dir/main_single.cpp.o CMakeFiles/server_single.dir/log/log.cpp.o CMakeFiles/server_single.dir/timer/timer_lst.cpp.o -o server_single  /usr/local/lib/libepoll-shim.dylib
+/usr/bin/c++  -pthread -O3 -DNDEBUG -arch x86_64 -Wl,-search_paths_first -Wl,-headerpad_max_install_names CMakeFiles/server_single.dir/log/log.cpp.o CMakeFiles/server_single.dir/timer/timer_lst.cpp.o -o server_single  /usr/local/lib/libepoll-shim.dylib

@@ -72,24 +72,10 @@ include CMakeFiles/server_single.dir/flags.make
 CMakeFiles/server_single.dir/codegen:
 .PHONY : CMakeFiles/server_single.dir/codegen
 
-CMakeFiles/server_single.dir/main_single.cpp.o: CMakeFiles/server_single.dir/flags.make
-CMakeFiles/server_single.dir/main_single.cpp.o: /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/main_single.cpp
-CMakeFiles/server_single.dir/main_single.cpp.o: CMakeFiles/server_single.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/mac_build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/server_single.dir/main_single.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/server_single.dir/main_single.cpp.o -MF CMakeFiles/server_single.dir/main_single.cpp.o.d -o CMakeFiles/server_single.dir/main_single.cpp.o -c /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/main_single.cpp
-
-CMakeFiles/server_single.dir/main_single.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/server_single.dir/main_single.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/main_single.cpp > CMakeFiles/server_single.dir/main_single.cpp.i
-
-CMakeFiles/server_single.dir/main_single.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/server_single.dir/main_single.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/main_single.cpp -o CMakeFiles/server_single.dir/main_single.cpp.s
-
 CMakeFiles/server_single.dir/log/log.cpp.o: CMakeFiles/server_single.dir/flags.make
 CMakeFiles/server_single.dir/log/log.cpp.o: /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/log/log.cpp
 CMakeFiles/server_single.dir/log/log.cpp.o: CMakeFiles/server_single.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/mac_build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/server_single.dir/log/log.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/mac_build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/server_single.dir/log/log.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/server_single.dir/log/log.cpp.o -MF CMakeFiles/server_single.dir/log/log.cpp.o.d -o CMakeFiles/server_single.dir/log/log.cpp.o -c /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/log/log.cpp
 
 CMakeFiles/server_single.dir/log/log.cpp.i: cmake_force
@@ -103,7 +89,7 @@ CMakeFiles/server_single.dir/log/log.cpp.s: cmake_force
 CMakeFiles/server_single.dir/timer/timer_lst.cpp.o: CMakeFiles/server_single.dir/flags.make
 CMakeFiles/server_single.dir/timer/timer_lst.cpp.o: /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/timer/timer_lst.cpp
 CMakeFiles/server_single.dir/timer/timer_lst.cpp.o: CMakeFiles/server_single.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/mac_build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CXX object CMakeFiles/server_single.dir/timer/timer_lst.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/mac_build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/server_single.dir/timer/timer_lst.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/server_single.dir/timer/timer_lst.cpp.o -MF CMakeFiles/server_single.dir/timer/timer_lst.cpp.o.d -o CMakeFiles/server_single.dir/timer/timer_lst.cpp.o -c /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/timer/timer_lst.cpp
 
 CMakeFiles/server_single.dir/timer/timer_lst.cpp.i: cmake_force
@@ -116,20 +102,18 @@ CMakeFiles/server_single.dir/timer/timer_lst.cpp.s: cmake_force
 
 # Object files for target server_single
 server_single_OBJECTS = \
-"CMakeFiles/server_single.dir/main_single.cpp.o" \
 "CMakeFiles/server_single.dir/log/log.cpp.o" \
 "CMakeFiles/server_single.dir/timer/timer_lst.cpp.o"
 
 # External object files for target server_single
 server_single_EXTERNAL_OBJECTS =
 
-server_single: CMakeFiles/server_single.dir/main_single.cpp.o
 server_single: CMakeFiles/server_single.dir/log/log.cpp.o
 server_single: CMakeFiles/server_single.dir/timer/timer_lst.cpp.o
 server_single: CMakeFiles/server_single.dir/build.make
 server_single: /usr/local/lib/libepoll-shim.dylib
 server_single: CMakeFiles/server_single.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/mac_build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Linking CXX executable server_single"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/mac_build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Linking CXX executable server_single"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/server_single.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.
