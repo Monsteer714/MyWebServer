@@ -13,11 +13,12 @@ template <typename T>
 class Threadpool {
 private:
     size_t thread_num_ = {};
-    size_t max_thread_num_ = {};
+    size_t m_max_conn_num_ = {};
     std::vector<pthread_t> threads_ = {};
     std::queue<T*> task_queue_ = {};
     locker mutex_ = {};
     cond cond_ = {};
+    int m_actor_model_ = {};
     bool shutdown_ = {};
 
     static void* worker(void* arg) {
@@ -38,14 +39,24 @@ private:
             tp->task_queue_.pop();
 
             tp->mutex_.unlock();
-            task->process();
+            if (tp->m_actor_model_ == 0) {
+                if (task->m_state_ == 0) { //read
+                    task->read_once();
+                    task->process();
+                } else { //write
+                    task->write();
+                }
+            } else {
+                task->process();
+            }
         }
     }
 
 public:
-    Threadpool(size_t thread_num, size_t max_thread_num) {
+    Threadpool(size_t thread_num, size_t m_max_conn_num, int m_actor_model) {
         thread_num_ = thread_num;
-        max_thread_num_ = max_thread_num;
+        m_max_conn_num_ = m_max_conn_num;
+        m_actor_model_ = m_actor_model;
         threads_ = std::vector<pthread_t>(thread_num_);
         size_t created = 0;
         for (size_t i = 0; i < thread_num_; ++i, ++created) {
@@ -71,7 +82,7 @@ public:
     bool append(T* task) {
         mutex_.lock();
 
-        if (task_queue_.size() >= max_thread_num_) {
+        if (task_queue_.size() >= m_max_conn_num_) {
             mutex_.unlock();
             return false;
         }
@@ -85,10 +96,11 @@ public:
     bool append_s(T* task, int state) {
         mutex_.lock();
 
-        if (task_queue_.size() >= max_thread_num_) {
+        if (task_queue_.size() >= m_max_conn_num_) {
             mutex_.unlock();
             return false;
         }
+        task->m_state_ = state;
         task_queue_.push(task);
         mutex_.unlock();
         cond_.signal();

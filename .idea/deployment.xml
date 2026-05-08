@@ -13,7 +13,7 @@
       <paths name="cs144">
         <serverdata>
           <mappings>
-            <mapping deploy="/root/MyWebServer" local="$PROJECT_DIR$" web="/" />
+            <mapping deploy="/MyWebServer" local="$PROJECT_DIR$" web="/" />
           </mappings>
         </serverdata>
       </paths>

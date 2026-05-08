@@ -19,8 +19,13 @@
 #include "timer/timer_lst.h"
 
 
+constexpr int MAX_FD = 65535;
+
 class WebServer {
 private:
+    //http_conn
+    http_conn* m_user_ = {};
+
     //threadpool
     Threadpool<http_conn>* m_thread_pool_ = {};
     int m_max_threads_num_ = {};
@@ -33,6 +38,7 @@ private:
     //timer
     Util m_util_ = {};
     int m_pipe_fd_[2] = {};
+    client_data* m_user_timer_ = {};
 
     void setNonBlocking(int fd) {
         int flags = fcntl(fd, F_GETFL, 0);
@@ -53,16 +59,26 @@ private:
         epoll_ctl(m_epoll_fd_, EPOLL_CTL_ADD, fd, &ev);
     }
 
+    void createConn(int connfd) {
+        m_user_[connfd].init(connfd);
+
+        //create timer;
+    }
+
     void createLog() {
         Log::getInstance()->init("./ServerLog", 0, 2048, 5000000, 800);
     }
 public:
     WebServer() {
-        m_thread_pool_ = new Threadpool<http_conn>(8, 10000);
+        m_thread_pool_ = new Threadpool<http_conn>(8, 10000, 0);
+        m_user_ = new http_conn[MAX_FD];
+        m_user_timer_ = new client_data[MAX_FD];
     }
 
     ~WebServer() {
         delete m_thread_pool_;
+        delete[] m_user_;
+        delete[] m_user_timer_;
         if (m_epoll_fd_ >= 0) close(m_epoll_fd_);
         if (m_server_fd_ >= 0) close(m_server_fd_);
     }
@@ -132,12 +148,21 @@ public:
                         setNonBlocking(client_fd);
 
                         epollAdd(client_fd);
+
+                        createConn(fd);
                     }
+                } else if (events[i].events & (EPOLLERR | EPOLLHUP | EPOLLRDHUP)) {
+                    //错误，关闭连接；
                 } else if ((fd == m_pipe_fd_[0]) && (events[i].events & EPOLLIN)) {
                     //sig信号处理
-                } else {
-                    auto conn = new http_conn(fd);
-                    if (!m_thread_pool_->append(conn)) {
+                } else if (events[i].events & EPOLLIN){
+                    auto conn = m_user_ + fd;
+                    if (!m_thread_pool_->append_s(conn, 0)) {
+                        delete conn;
+                    }
+                } else if (events[i].events & EPOLLOUT) {
+                    auto conn = m_user_ + fd;
+                    if (!m_thread_pool_->append_s(conn, 1)) {
                         delete conn;
                     }
                 }

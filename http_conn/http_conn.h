@@ -62,14 +62,24 @@ private:
     METHOD m_method_ = {};
     CHECK_STATE m_check_state_ = {};
     char m_read_buffer_[READ_BUFFER_SIZE] = {};
-    char m_write_buffer_[WRITE_BUFFER_SIZE] = {};
+    std::string m_write_buffer_ = {};
+
+
+    void removefd(int epollfd, int fd) {
+        epoll_ctl(epollfd, EPOLL_CTL_DEL, fd, NULL);
+    }
 
     // Close the client fd if it's valid and mark it as closed.
-    void close_fd() {
-        if (m_client_fd_ >= 0) {
-            ::close(m_client_fd_);
-            m_client_fd_ = -1;
+    void close_fd(int fd) {
+        if (fd >= 0) {
+            ::close(fd);
+            fd = -1;
         }
+    }
+
+    void close_conn() {
+        removefd(m_epollfd_, m_client_fd_);
+        close_fd(m_client_fd_);
     }
 
     char* get_line() {
@@ -78,14 +88,17 @@ private:
 
 public:
     inline static int m_epollfd_ = -1;
-    int m_state_; //0:read, 1:
+    int m_state_; //0:read, 1:write
 
 public:
-    http_conn(int client_fd) {
-        m_client_fd_ = client_fd;
+    http_conn() {
     };
 
     ~http_conn() {
+    }
+
+    void init(int client_fd) {
+        m_client_fd_ = client_fd;
     }
 
     static std::string read_file(const std::string& path) {
@@ -120,13 +133,13 @@ public:
                 }
                 else {
                     perror("read");
-                    close_fd();
+                    close_conn();
                     return false;
                 }
             }
             else if (n == 0) {
                 // Client closed the connection
-                close_fd();
+                close_conn();
                 return false;
             }
             m_read_idx_ += n;
@@ -253,22 +266,33 @@ public:
         return HTTP_CODE{};
     }
 
-    void process_write(HTTP_CODE http_code) {
+    bool process_write(HTTP_CODE http_code) {
+        bool ret = false;
         std::string response;
         std::string body = read_file(m_index_path_);
         switch (http_code) {
         case BAD_REQUEST:
             response = "HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
+            ret = false;
             break;
         case GET_REQUEST:
             response = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: " + std::to_string(body.size()) +
                 "\r\nConnection: close\r\n\r\n" + body;
+            ret = true;
             break;
         default:
             response = "HTTP/1.1 500 Internal Server Error\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
+            ret = false;
             break;
         }
-        write(m_client_fd_, response.c_str(), response.size());
+        response += '\0';
+        m_write_buffer_ = response;
+        return ret;
+    }
+
+    bool write() {
+        ::write(m_client_fd_, m_write_buffer_.c_str(), m_write_buffer_.size());
+        return true;
     }
 
     // process may modify the fd state (close it), so it cannot be const.
@@ -279,17 +303,17 @@ public:
         }
 
         read_once();
-        auto ret = process_read();
-        if (ret == NO_REQUEST) {
+        auto read_ret = process_read();
+        if (read_ret == NO_REQUEST) {
             modfd(m_epollfd_, m_client_fd_, EPOLLIN);
             return;
         }
-        process_write(ret);
-        // Ensure all data is flushed before closing the connection
-        if (m_client_fd_ >= 0) {
-            shutdown(m_client_fd_, SHUT_WR);
+        auto write_ret = process_write(read_ret);
+        if (!write_ret) {
+            close_conn();
         }
-        close_fd();
+        // Ensure all data is flushed before closing the connection
+        modfd(m_epollfd_, m_client_fd_, EPOLLOUT);
     }
 };
 
