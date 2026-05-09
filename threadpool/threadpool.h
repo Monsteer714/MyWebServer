@@ -41,8 +41,9 @@ private:
             tp->mutex_.unlock();
             if (tp->m_actor_model_ == 0) {
                 if (task->m_state_ == 0) { //read
-                    task->read_once();
-                    task->process();
+                    if (task->read_once()) {
+                        task->process();
+                    }
                 } else { //write
                     task->write();
                 }

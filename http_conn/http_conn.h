@@ -324,7 +324,6 @@ public:
             LOG_INFO("%s", "write error");
             close_conn();
         }
-        // Ensure all data is flushed before closing the connection
         modfd(m_epollfd_, m_client_fd_, EPOLLOUT);
     }
 };

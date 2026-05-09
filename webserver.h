@@ -20,6 +20,7 @@
 
 
 constexpr int MAX_FD = 65535;
+constexpr int TIME_SLOT = 5;
 
 class WebServer {
 private:
@@ -59,15 +60,23 @@ private:
         epoll_ctl(m_epoll_fd_, EPOLL_CTL_ADD, fd, &ev);
     }
 
+    //初始化新的http连接，初始化该连接对应的定时器
     void createConn(int connfd) {
         m_user_[connfd].init(connfd);
 
-        //create timer;
+        m_user_timer_[connfd].m_sock_fd_ = connfd;
+        auto timer = std::make_shared<util_timer>();
+        timer->cb_func = cb_func;
+        timer->user_data_ = &m_user_timer_[connfd];
+        timer->expire_ = time(NULL) + 3 * TIME_SLOT;
+        m_user_timer_[connfd].m_timer_ = timer;
+        m_util_.m_timer_.add_timer(timer);
     }
 
     void createLog() {
         Log::getInstance()->init("./ServerLog", 0, 2048, 5000000, 800);
     }
+
 public:
     WebServer() {
         m_thread_pool_ = new Threadpool<http_conn>(8, 10000, 0);
@@ -79,11 +88,14 @@ public:
         delete m_thread_pool_;
         delete[] m_user_;
         delete[] m_user_timer_;
-        if (m_epoll_fd_ >= 0) close(m_epoll_fd_);
-        if (m_server_fd_ >= 0) close(m_server_fd_);
+        if (m_epoll_fd_ >= 0)
+            close(m_epoll_fd_);
+        if (m_server_fd_ >= 0)
+            close(m_server_fd_);
     }
 
     void start() {
+        //网络编程基础步骤
         m_server_fd_ = socket(AF_INET, SOCK_STREAM, 0);
         assert(m_server_fd_ >= 0);
 
@@ -101,17 +113,31 @@ public:
         assert(ret >= 0);
         ret = listen(m_server_fd_, 1024);
         assert(ret >= 0);
+        //
+
 
         setNonBlocking(m_server_fd_);
 
+        //创建内核epoll事件表
         m_epoll_fd_ = epoll_create1(0);
         assert(m_epoll_fd_ >= 0);
 
         http_conn::m_epollfd_ = m_epoll_fd_;
 
-        socketpair(AF_UNIX, SOCK_STREAM, 0, m_pipe_fd_);
+        //定时器相关
+        ret = socketpair(AF_UNIX, SOCK_STREAM, 0, m_pipe_fd_);
+        assert(ret >= 0);
+
         Util::u_epoll_fd_ = m_epoll_fd_;
         Util::u_pipe_fd_ = m_pipe_fd_;
+
+        m_util_.init(TIME_SLOT);
+        setNonBlocking(m_pipe_fd_[1]);
+        m_util_.addfd(m_epoll_fd_, m_pipe_fd_[0], false, 0);
+        m_util_.addsig(SIGPIPE, SIG_IGN, false);
+        m_util_.addsig(SIGALRM, Util::sig_handler, false);
+        m_util_.addsig(SIGTERM, Util::sig_handler, false);
+        alarm(TIME_SLOT);
 
         epollAddServer(m_server_fd_);
 
@@ -120,16 +146,69 @@ public:
         Log::LOG_INFO("Web server started on port %d", 8888);
     }
 
+    void adjust_timer(int fd) {
+        auto timer = m_user_timer_[fd].m_timer_;
+        timer->expire_ = time(NULL) + 3 * TIME_SLOT;
+        m_util_.m_timer_.adjust_timer(timer);
+
+        LOG_INFO("adjust %d timer", fd);
+    }
+
+    void dealwithclient() {
+    }
+
+    void dealwithread(int fd) {
+        adjust_timer(fd);
+
+        auto conn = m_user_ + fd;
+        LOG_INFO("%s", "epollin in webserver loop");
+        if (!m_thread_pool_->append_s(conn, 0)) {
+            delete conn;
+        }
+    }
+
+    void dealwithwrite(int fd) {
+        adjust_timer(fd);
+
+        auto conn = m_user_ + fd;
+        LOG_INFO("%s", "epollout in webserver loop");
+        if (!m_thread_pool_->append_s(conn, 1)) {
+            delete conn;
+        }
+    }
+
+    bool dealwithsignal(bool& timeout, bool& stop_server) {
+        char signals[1024];
+        int ret = recv(m_pipe_fd_[0], &signals, sizeof(signals), 0);
+        if (ret < 1) {
+            LOG_ERROR("%s", "dealwithsignal error.");
+            return false;
+        }
+        for (int _ = 0; _ < ret; ++_) {
+            switch (signals[_]) {
+            case SIGALRM:
+                timeout = true;
+                break;
+            case SIGTERM:
+                stop_server = true;
+                break;
+            default:
+                break;
+            }
+        }
+        return true;
+    }
+
+
     void loop() {
         std::vector<epoll_event> events(m_max_events_num_);
-        while (true) {
+        bool timeout = false;
+        bool stop_server = false;
+        while (!stop_server) {
             int n = epoll_wait(m_epoll_fd_, events.data(), m_max_events_num_, -1);
-            if (n < 0) {
-                if (errno == EINTR) {
-                    continue; // 被信号中断，继续等待
-                }
-                perror("epoll_wait");
-                return;
+            if (n < 0 && errno != EINTR) {
+                LOG_ERROR("%s", "epoll_wait error");
+                break;
             }
 
             for (int i = 0; i < n; ++i) {
@@ -141,6 +220,9 @@ public:
                             if (errno == EAGAIN || errno == EWOULDBLOCK) {
                                 break;
                             }
+                            if (errno == EINTR) {
+                                continue;
+                            }
                             perror("accept");
                             break;
                         }
@@ -151,24 +233,31 @@ public:
 
                         createConn(client_fd);
                     }
-                } else if (events[i].events & (EPOLLERR | EPOLLHUP | EPOLLRDHUP)) {
-                    close(fd);
-                    //错误，关闭连接；
-                } else if ((fd == m_pipe_fd_[0]) && (events[i].events & EPOLLIN)) {
-                    //sig信号处理
-                } else if (events[i].events & EPOLLIN){
-                    auto conn = m_user_ + fd;
-                    LOG_INFO("%s", "epollin in webserver loop");
-                    if (!m_thread_pool_->append_s(conn, 0)) {
-                        delete conn;
-                    }
-                } else if (events[i].events & EPOLLOUT) {
-                    auto conn = m_user_ + fd;
-                    LOG_INFO("%s", "epollout in webserver loop");
-                    if (!m_thread_pool_->append_s(conn, 1)) {
-                        delete conn;
-                    }
                 }
+                else if (events[i].events & (EPOLLERR | EPOLLHUP | EPOLLRDHUP)) {
+                    auto timer = m_user_timer_[fd].m_timer_;
+                    if (timer) {
+                        timer->cb_func(timer->user_data_);
+                        m_util_.m_timer_.del_timer(timer);
+                    }
+                    LOG_INFO("close fd %d", fd);
+                    //错误，关闭连接；
+                }
+                else if ((fd == m_pipe_fd_[0]) && (events[i].events & EPOLLIN)) {
+                    dealwithsignal(timeout, stop_server);
+                    //sig信号处理
+                }
+                else if (events[i].events & EPOLLIN) {
+                    dealwithread(fd);
+                }
+                else if (events[i].events & EPOLLOUT) {
+                    dealwithwrite(fd);
+                }
+            }
+            if (timeout) {
+                m_util_.time_handler();
+                LOG_INFO("%s", "tick.");
+                timeout = false;
             }
         }
     }

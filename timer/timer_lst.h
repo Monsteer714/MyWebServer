@@ -32,7 +32,6 @@
 class util_timer;
 
 struct client_data {
-    sockaddr_in m_client_addr_;
     int m_sock_fd_;
     std::shared_ptr<util_timer> m_timer_;
 };
@@ -51,16 +50,16 @@ public:
 
 class sort_timer_lst {
 private:
-    void add_timer(std::shared_ptr<util_timer> timer, std::shared_ptr<util_timer> head);
+    void add_timer(const std::shared_ptr<util_timer> &timer, const std::shared_ptr<util_timer> &head);
     std::weak_ptr<util_timer> tail_ = {};
     std::shared_ptr<util_timer> head_ = {};
 public:
     sort_timer_lst();
     ~sort_timer_lst();
 
-    void add_timer(std::shared_ptr<util_timer> timer);
-    void adjust_timer(std::shared_ptr<util_timer> timer);
-    void del_timer(std::shared_ptr<util_timer> timer);
+    void add_timer(const std::shared_ptr<util_timer> &timer);
+    void adjust_timer(const std::shared_ptr<util_timer> &timer);
+    void del_timer(const std::shared_ptr<util_timer> &timer);
     void tick();
 };
 

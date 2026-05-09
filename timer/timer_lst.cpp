@@ -20,18 +20,17 @@ sort_timer_lst::~sort_timer_lst() {
     }
 }
 
-void sort_timer_lst::add_timer(std::shared_ptr<util_timer> timer) {
+void sort_timer_lst::add_timer(const std::shared_ptr<util_timer> &timer) {
     if (!timer) {
         return;
     }
     add_timer(timer, head_);
 }
 
-void sort_timer_lst::adjust_timer(std::shared_ptr<util_timer> timer) {
+void sort_timer_lst::adjust_timer(const std::shared_ptr<util_timer> &timer) {
     if (!timer) {
         return;
     }
-    auto temp = timer;
     auto next = timer->next_;
     auto prev = timer->prev_.lock();
 
@@ -41,10 +40,10 @@ void sort_timer_lst::adjust_timer(std::shared_ptr<util_timer> timer) {
 
     next->prev_ = prev;
     prev->next_ = next;
-    add_timer(temp, head_);
+    add_timer(timer, head_);
 }
 
-void sort_timer_lst::del_timer(std::shared_ptr<util_timer> timer) {
+void sort_timer_lst::del_timer(const std::shared_ptr<util_timer> &timer) {
     if (!timer) {
         return;
     }
@@ -63,7 +62,7 @@ void sort_timer_lst::del_timer(std::shared_ptr<util_timer> timer) {
     timer->prev_.reset();
 }
 
-void sort_timer_lst::add_timer(std::shared_ptr<util_timer> timer, std::shared_ptr<util_timer> head) {
+void sort_timer_lst::add_timer(const std::shared_ptr<util_timer> &timer, const std::shared_ptr<util_timer> &head) {
     auto temp = head->next_;
     while (temp) {
         if (timer->expire_ < temp->expire_) {
@@ -79,7 +78,6 @@ void sort_timer_lst::add_timer(std::shared_ptr<util_timer> timer, std::shared_pt
             temp = temp->next_;
         }
     }
-    return;
 }
 
 void sort_timer_lst::tick() {
@@ -104,14 +102,13 @@ void cb_func(client_data* data) {
 
     epoll_ctl(Util::u_epoll_fd_, EPOLL_CTL_DEL, fd, 0);
 
+    LOG_INFO("close fd %d", fd);
     close(fd);
-    return;
 }
 
 void Util::setnonblocking(int fd) {
     int flag = fcntl(fd, F_GETFL);
     fcntl(fd, F_SETFL, flag | O_NONBLOCK);
-    return;
 }
 
 void Util::addfd(int epollfd, int fd, bool one_shot, int trigmode) {
@@ -125,7 +122,6 @@ void Util::addfd(int epollfd, int fd, bool one_shot, int trigmode) {
     }
 
     epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, &event);
-    return;
 }
 
 void Util::init(int timeslot) {
@@ -147,7 +143,8 @@ void Util::addsig(int sig, void (*handler)(int), bool restart) {
         sa.sa_flags |= SA_RESTART;
     }
     sigfillset(&sa.sa_mask);
-    assert(sigaction(sig, &sa, NULL) != -1);
+    int ret = sigaction(sig, &sa, nullptr);
+    assert(ret != -1);
 }
 
 void Util::time_handler() {
