@@ -146,7 +146,7 @@ public:
         Log::LOG_INFO("Web server started on port %d", 8888);
     }
 
-    void adjust_timer(int fd) {
+    void adjustTimer(int fd) {
         auto timer = m_user_timer_[fd].m_timer_;
         timer->expire_ = time(NULL) + 3 * TIME_SLOT;
         m_util_.m_timer_.adjust_timer(timer);
@@ -154,27 +154,32 @@ public:
         LOG_INFO("adjust %d timer", fd);
     }
 
-    void dealwithclient() {
+
+    void dealWithTimer(int fd) {
+        auto timer = m_user_timer_[fd].m_timer_;
+        if (timer) {
+            timer->cb_func(timer->user_data_);
+            m_util_.m_timer_.del_timer(timer);
+        }
+        LOG_INFO("close fd %d", fd);
     }
 
+    void dealwithclient() {
+    }
     void dealwithread(int fd) {
-        adjust_timer(fd);
+        adjustTimer(fd);
 
         auto conn = m_user_ + fd;
         LOG_INFO("%s", "epollin in webserver loop");
-        if (!m_thread_pool_->append_s(conn, 0)) {
-            delete conn;
-        }
+        m_thread_pool_->append_s(conn, 0);
     }
 
     void dealwithwrite(int fd) {
-        adjust_timer(fd);
+        adjustTimer(fd);
 
         auto conn = m_user_ + fd;
         LOG_INFO("%s", "epollout in webserver loop");
-        if (!m_thread_pool_->append_s(conn, 1)) {
-            delete conn;
-        }
+        m_thread_pool_->append_s(conn, 1);
     }
 
     bool dealwithsignal(bool& timeout, bool& stop_server) {
@@ -235,12 +240,7 @@ public:
                     }
                 }
                 else if (events[i].events & (EPOLLERR | EPOLLHUP | EPOLLRDHUP)) {
-                    auto timer = m_user_timer_[fd].m_timer_;
-                    if (timer) {
-                        timer->cb_func(timer->user_data_);
-                        m_util_.m_timer_.del_timer(timer);
-                    }
-                    LOG_INFO("close fd %d", fd);
+                    dealWithTimer(fd);
                     //错误，关闭连接；
                 }
                 else if ((fd == m_pipe_fd_[0]) && (events[i].events & EPOLLIN)) {

@@ -39,13 +39,16 @@ private:
             tp->task_queue_.pop();
 
             tp->mutex_.unlock();
-            if (tp->m_actor_model_ == 0) {
+            if (tp->m_actor_model_ == 0) { //reactor
                 if (task->m_state_ == 0) { //read
                     if (task->read_once()) {
                         task->process();
+                    } else {
                     }
                 } else { //write
-                    task->write();
+                    if (task->write()) {
+                    } else {
+                    }
                 }
             } else {
                 task->process();

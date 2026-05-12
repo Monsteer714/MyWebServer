@@ -17,7 +17,20 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/epoll.h>
+#include <sys/mman.h>
+#include <stdarg.h>
+
 #include "../log/log.h"
+
+inline const char* ok_200_title = "OK";
+inline const char* error_400_title = "Bad Request";
+inline const char* error_400_form = "Your request has bad syntax or is inherently impossible to staisfy.\n";
+inline const char* error_403_title = "Forbidden";
+inline const char* error_403_form = "You do not have permission to get file form this server.\n";
+inline const char* error_404_title = "Not Found";
+inline const char* error_404_form = "The requested file was not found on this server.\n";
+inline const char* error_500_title = "Internal Error";
+inline const char* error_500_form = "There was an unusual problem serving the request file.\n";
 
 class http_conn {
 public:
@@ -40,6 +53,7 @@ public:
         BAD_REQUEST,
         GET_REQUEST,
         INTERNAL_ERROR,
+        FILE_REQUEST,
     };
 
     enum LINE_STATE {
@@ -56,15 +70,22 @@ private:
     ssize_t m_check_idx_ = {};
     ssize_t m_start_line_ = {};
     ssize_t m_content_length_ = {};
+    ssize_t m_bytes_to_send_ = {};
+    ssize_t m_bytes_have_sent_ = {};
     std::string m_host_ = {};
     std::string m_path = {};
     std::string m_version = {};
-    std::string m_index_path_ = "./root/index.html";
+    char* m_index_path_ = (char*)"./root/index.html";
     METHOD m_method_ = {};
     CHECK_STATE m_check_state_ = {};
     char m_read_buffer_[READ_BUFFER_SIZE] = {};
-    std::string m_write_buffer_ = {};
+    char m_write_buffer_[WRITE_BUFFER_SIZE] = {};
 
+    char* m_file_ = {};
+    char* m_file_address = {};
+    struct stat m_file_stat_ = {};
+    struct iovec m_iovec_[2] = {};
+    int m_iovec_count_ = {};
 
     void removefd(int epollfd, int fd) {
         epoll_ctl(epollfd, EPOLL_CTL_DEL, fd, nullptr);
@@ -89,7 +110,9 @@ private:
 
 public:
     inline static int m_epollfd_ = -1;
-    int m_state_; //0:read, 1:write
+    int m_state_ = {}; //0:read, 1:write
+    int m_error_flag_ = {};
+    int m_op_finish_flag_ = {};
 
 public:
     http_conn() {
@@ -100,6 +123,30 @@ public:
 
     void init(int client_fd) {
         m_client_fd_ = client_fd;
+        init();
+    }
+
+    void init() {
+        m_read_idx_ = 0;
+        m_write_idx_ = 0;
+        m_check_idx_ = 0;
+        m_start_line_ = 0;
+        m_content_length_ = 0;
+        m_bytes_to_send_ = 0;
+        m_bytes_have_sent_ = 0;
+        m_host_.clear();
+        m_path.clear();
+        m_version.clear();
+        m_method_ = GET;
+        m_check_state_ = CHECK_REQUEST;
+        m_linger_ = false;
+        m_iovec_count_ = 0;
+        m_iovec_[0] = {};
+        m_iovec_[1] = {};
+        m_state_ = 0;
+
+        memset(m_read_buffer_, '\0', sizeof(m_read_buffer_));
+        memset(m_write_buffer_, '\0', sizeof(m_write_buffer_));
     }
 
     static std::string read_file(const std::string& path) {
@@ -175,6 +222,22 @@ public:
         return LINE_OPEN;
     }
 
+    HTTP_CODE do_request() {
+        m_file_ = m_index_path_;
+        stat(m_file_, &m_file_stat_);
+        int fd = open(m_file_, O_RDONLY);
+        m_file_address = (char*)mmap(0, m_file_stat_.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+        close(fd);
+        return FILE_REQUEST;
+    }
+
+    void unmap() {
+        if (m_file_address) {
+            munmap(m_file_address, m_file_stat_.st_size);
+            m_file_address = 0;
+        }
+    }
+
     HTTP_CODE process_read() {
         auto line_state = LINE_OK;
         auto ret = NO_REQUEST;
@@ -196,14 +259,15 @@ public:
                     return BAD_REQUEST;
                 }
                 if (ret == GET_REQUEST) {
-                    return GET_REQUEST;
+                    return do_request();
                 }
                 break;
             case CHECK_CONTENT:
                 ret = parse_content_line(text);
-                if (ret == BAD_REQUEST) {
-                    return BAD_REQUEST;
+                if (ret == GET_REQUEST) {
+                    return do_request();
                 }
+                line_state = LINE_OPEN;
                 break;
             default:
                 return INTERNAL_ERROR;
@@ -250,8 +314,8 @@ public:
             text += strspn(text, " \t");
             m_host_ = text;
         }
-        else if (strncasecmp(text, "Connection:", 13) == 0) {
-            text += 13;
+        else if (strncasecmp(text, "Connection:", 11) == 0) {
+            text += 11;
             text += strspn(text, " \t");
             std::string connection = text;
             if (strncasecmp(connection.c_str(), "keep-alive", 10) == 0) {
@@ -264,47 +328,144 @@ public:
     }
 
     HTTP_CODE parse_content_line(char* text) {
-        return HTTP_CODE{};
+        if (m_read_idx_ >= m_content_length_ + m_check_idx_) {
+            text[m_content_length_] = '\0';
+            return GET_REQUEST;
+        }
+        return NO_REQUEST;
     }
 
     bool add_response(const char* format, ...) {
         va_list args;
         va_start(args, format);
 
+        int len = vsnprintf(m_write_buffer_ + m_write_idx_, WRITE_BUFFER_SIZE - m_write_idx_ - 1, format, args);
+        if (len >= WRITE_BUFFER_SIZE - m_write_idx_ - 1) {
+            va_end(args);
+            return false;
+        }
+
+        m_write_idx_ += len;
 
         va_end(args);
+        return true;
+    }
+
+    bool add_status_line(int status, const char* title) {
+        return add_response("%s %d %s\r\n", "HTTP/1.1", status, title);
+    }
+
+    bool add_headers(const int &content_length) {
+        return add_content_length(content_length) && add_content_type()
+                && add_connection() && add_blank_line();
+    }
+
+    bool add_content_type(){
+        return add_response("Content-Type:%s\r\n", "text/html");
+    }
+
+    bool add_content_length(const int &content_length) {
+        return add_response("Content-Length:%d\r\n", content_length);
+    }
+
+    bool add_connection() {
+        return add_response("Connection:%s\r\n", m_linger_ ? "keep-alive" : "close");
+    }
+
+    bool add_blank_line() {
+        return add_response("\r\n");
+    }
+
+    bool add_content(const char* content) {
+        return add_response("%s", content);
     }
 
     bool process_write(HTTP_CODE http_code) {
-        bool ret = false;
-        std::string response;
-        std::string body = read_file(m_index_path_);
         switch (http_code) {
-        case BAD_REQUEST:
-            response = "HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
-            ret = false;
+        case INTERNAL_ERROR:
+            add_status_line(500, error_500_title);
+            add_headers(std::strlen(error_500_form));
+            if (!add_content(error_500_form)) {
+                return false;
+            }
             break;
-        case GET_REQUEST:
-            response = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: " + std::to_string(body.size()) +
-                "\r\nConnection: close\r\n\r\n" + body;
-            ret = true;
+        case BAD_REQUEST:
+            add_status_line(400, error_400_title);
+            add_headers(std::strlen(error_400_form));
+            if (!add_content(error_400_form)) {
+                return false;
+            }
+            break;
+        case FILE_REQUEST:
+            add_status_line(200, ok_200_title);
+            if (m_file_stat_.st_size != 0) {
+                add_headers(m_file_stat_.st_size);
+                m_iovec_[0].iov_base = m_write_buffer_;
+                m_iovec_[0].iov_len = m_write_idx_;
+                m_iovec_[1].iov_base = m_file_address;
+                m_iovec_[1].iov_len = m_file_stat_.st_size;
+                m_iovec_count_ = 2;
+                m_bytes_to_send_ = m_write_idx_ + m_file_stat_.st_size;
+                return true;
+            } else {
+                const char* body = "<html><body><body><html>";
+                add_headers(std::strlen(body));
+                if (!add_content(body)) {
+                    return false;
+                }
+            }
             break;
         default:
-            response = "HTTP/1.1 500 Internal Server Error\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
-            ret = false;
+            return false;
             break;
         }
-        response += '\0';
-        m_write_buffer_ = response;
+        m_iovec_[0].iov_base = m_write_buffer_;
+        m_iovec_[0].iov_len = m_write_idx_;
+        m_iovec_count_ = 1;
+        m_bytes_to_send_ = m_write_idx_;
         LOG_INFO("%s", "processed_write")
-        return ret;
+        return true;
     }
 
     bool write() {
-        ::write(m_client_fd_, m_write_buffer_.c_str(), m_write_buffer_.size());
-        modfd(m_epollfd_, m_client_fd_, EPOLLIN);
-        LOG_INFO("%s", "write");
-        return false;
+        int temp = 0;
+        while (true) {
+            temp = writev(m_client_fd_, m_iovec_, m_iovec_count_);
+
+            if (temp == -1) {
+                if (errno == EAGAIN) {
+                    modfd(m_epollfd_, m_client_fd_, EPOLLOUT);
+                    return true;
+                }
+                unmap();
+                close_conn();
+                return false;
+            }
+
+            m_bytes_to_send_ -= temp;
+            m_bytes_have_sent_ += temp;
+
+            if (m_bytes_have_sent_ >= m_write_idx_) {
+                m_iovec_[0].iov_len = 0;
+                m_iovec_[1].iov_base = m_file_address + (m_bytes_have_sent_ - m_write_idx_);
+                m_iovec_[1].iov_len = m_bytes_to_send_;
+            } else {
+                m_iovec_[0].iov_base = m_write_buffer_ + m_bytes_have_sent_;
+                m_iovec_[0].iov_len = m_write_idx_ - m_bytes_have_sent_;
+            }
+
+            if (m_bytes_to_send_ <= 0) {
+                unmap();
+                modfd(m_epollfd_, m_client_fd_, EPOLLIN);
+                if (m_linger_) {
+                    init();
+                    return true;
+                } else {
+                    close_conn();
+                    return false;
+                }
+            }
+        }
     }
 
     // process may modify the fd state (close it), so it cannot be const.
@@ -323,6 +484,7 @@ public:
         if (!write_ret) {
             LOG_INFO("%s", "write error");
             close_conn();
+            return;
         }
         modfd(m_epollfd_, m_client_fd_, EPOLLOUT);
     }

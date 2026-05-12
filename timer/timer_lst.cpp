@@ -130,6 +130,7 @@ void Util::init(int timeslot) {
 
 void Util::sig_handler(int sig) {
     int saved_errno = errno;
+
     int msg = sig;
     send(u_pipe_fd_[1], &msg, 1, 0);
     errno = saved_errno;
