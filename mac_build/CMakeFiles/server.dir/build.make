@@ -86,10 +86,24 @@ CMakeFiles/server.dir/main.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/server.dir/main.cpp.s"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/main.cpp -o CMakeFiles/server.dir/main.cpp.s
 
+CMakeFiles/server.dir/config.cpp.o: CMakeFiles/server.dir/flags.make
+CMakeFiles/server.dir/config.cpp.o: /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/config.cpp
+CMakeFiles/server.dir/config.cpp.o: CMakeFiles/server.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/mac_build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/server.dir/config.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/server.dir/config.cpp.o -MF CMakeFiles/server.dir/config.cpp.o.d -o CMakeFiles/server.dir/config.cpp.o -c /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/config.cpp
+
+CMakeFiles/server.dir/config.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/server.dir/config.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/config.cpp > CMakeFiles/server.dir/config.cpp.i
+
+CMakeFiles/server.dir/config.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/server.dir/config.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/config.cpp -o CMakeFiles/server.dir/config.cpp.s
+
 CMakeFiles/server.dir/log/log.cpp.o: CMakeFiles/server.dir/flags.make
 CMakeFiles/server.dir/log/log.cpp.o: /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/log/log.cpp
 CMakeFiles/server.dir/log/log.cpp.o: CMakeFiles/server.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/mac_build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/server.dir/log/log.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/mac_build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CXX object CMakeFiles/server.dir/log/log.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/server.dir/log/log.cpp.o -MF CMakeFiles/server.dir/log/log.cpp.o.d -o CMakeFiles/server.dir/log/log.cpp.o -c /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/log/log.cpp
 
 CMakeFiles/server.dir/log/log.cpp.i: cmake_force
@@ -103,7 +117,7 @@ CMakeFiles/server.dir/log/log.cpp.s: cmake_force
 CMakeFiles/server.dir/timer/timer_lst.cpp.o: CMakeFiles/server.dir/flags.make
 CMakeFiles/server.dir/timer/timer_lst.cpp.o: /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/timer/timer_lst.cpp
 CMakeFiles/server.dir/timer/timer_lst.cpp.o: CMakeFiles/server.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/mac_build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CXX object CMakeFiles/server.dir/timer/timer_lst.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/mac_build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building CXX object CMakeFiles/server.dir/timer/timer_lst.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/server.dir/timer/timer_lst.cpp.o -MF CMakeFiles/server.dir/timer/timer_lst.cpp.o.d -o CMakeFiles/server.dir/timer/timer_lst.cpp.o -c /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/timer/timer_lst.cpp
 
 CMakeFiles/server.dir/timer/timer_lst.cpp.i: cmake_force
@@ -117,6 +131,7 @@ CMakeFiles/server.dir/timer/timer_lst.cpp.s: cmake_force
 # Object files for target server
 server_OBJECTS = \
 "CMakeFiles/server.dir/main.cpp.o" \
+"CMakeFiles/server.dir/config.cpp.o" \
 "CMakeFiles/server.dir/log/log.cpp.o" \
 "CMakeFiles/server.dir/timer/timer_lst.cpp.o"
 
@@ -124,12 +139,13 @@ server_OBJECTS = \
 server_EXTERNAL_OBJECTS =
 
 server: CMakeFiles/server.dir/main.cpp.o
+server: CMakeFiles/server.dir/config.cpp.o
 server: CMakeFiles/server.dir/log/log.cpp.o
 server: CMakeFiles/server.dir/timer/timer_lst.cpp.o
 server: CMakeFiles/server.dir/build.make
 server: /usr/local/lib/libepoll-shim.dylib
 server: CMakeFiles/server.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/mac_build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Linking CXX executable server"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/mac_build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Linking CXX executable server"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/server.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.

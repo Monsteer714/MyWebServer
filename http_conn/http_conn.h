@@ -64,6 +64,7 @@ public:
 
 private:
     int m_client_fd_ = {};
+    int m_TRIGMode_ = {};// LT : 0, ET : 1;
     bool m_linger_ = {};
     ssize_t m_read_idx_ = {}; //read_buffer下一位填充的起始序号，也即read_buffer可读数据最后一位的下一位
     ssize_t m_write_idx_ = {};
@@ -81,11 +82,35 @@ private:
     char m_read_buffer_[READ_BUFFER_SIZE] = {};
     char m_write_buffer_[WRITE_BUFFER_SIZE] = {};
 
+    //mmap
     char* m_file_ = {};
     char* m_file_address = {};
     struct stat m_file_stat_ = {};
     struct iovec m_iovec_[2] = {};
     int m_iovec_count_ = {};
+
+    void setNonBlocking(int fd) {
+        int flags = fcntl(fd, F_GETFL);
+        fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+    }
+
+    void addfd(int epfd, int fd, bool oneshot) {
+        epoll_event event = {};
+        event.data.fd = fd;
+
+        if (m_TRIGMode_ == 0) {
+            event.events = EPOLLIN | EPOLLONESHOT;
+        } else {
+            event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
+        }
+
+        if (oneshot) {
+            event.events |= EPOLLONESHOT;
+        }
+
+        epoll_ctl(epfd, EPOLL_CTL_ADD, fd, &event);
+        setNonBlocking(fd);
+    }
 
     void removefd(int epollfd, int fd) {
         epoll_ctl(epollfd, EPOLL_CTL_DEL, fd, nullptr);
@@ -97,6 +122,20 @@ private:
             ::close(fd);
             fd = -1;
         }
+    }
+
+    bool modfd(int epfd, int fd, int ev) {
+        epoll_event event = {};
+        event.data.fd = fd;
+
+        if (m_TRIGMode_ == 0) {
+            event.events = ev | EPOLLONESHOT | EPOLLRDHUP;
+        } else {
+            event.events = ev | EPOLLET | EPOLLONESHOT | EPOLLRDHUP;
+        }
+
+        epoll_ctl(epfd, EPOLL_CTL_MOD, fd, &event);
+        return true;
     }
 
     void close_conn() {
@@ -121,8 +160,10 @@ public:
     ~http_conn() {
     }
 
-    void init(int client_fd) {
-        m_client_fd_ = client_fd;
+    void init(int m_client_fd, int m_TRIGMode) {
+        m_client_fd_ = m_client_fd;
+        m_TRIGMode_ = m_TRIGMode;
+        addfd(m_epollfd_, m_client_fd_, true);
         init();
     }
 
@@ -159,40 +200,43 @@ public:
         return ss.str();
     }
 
-    bool modfd(int epfd, int fd, int ev) {
-        epoll_event event = {};
-        event.data.fd = fd;
-
-        event.events = ev | EPOLLET | EPOLLONESHOT;
-
-        epoll_ctl(epfd, EPOLL_CTL_MOD, fd, &event);
-        return true;
-    }
-
     bool read_once() {
-        while (true) {
+        if (m_read_idx_ >= READ_BUFFER_SIZE) {
+            return false;
+        }
+        if (m_TRIGMode_ == 0) { //LT
             ssize_t n = ::read(m_client_fd_, m_read_buffer_ + m_read_idx_, READ_BUFFER_SIZE - m_read_idx_);
-            if (n < 0) {
-                if (errno == EINTR) {
-                    continue; // interrupted, retry
-                }
-                if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                    break; // No more data to read right now
-                }
-                else {
-                    perror("read");
-                    close_conn();
-                    return false;
-                }
-            }
-            else if (n == 0) {
-                // Client closed the connection
+            if (n <= 0) {
                 close_conn();
                 return false;
             }
             m_read_idx_ += n;
+            return true;
+        } else { //ET
+            while (true) {
+                ssize_t n = ::read(m_client_fd_, m_read_buffer_ + m_read_idx_, READ_BUFFER_SIZE - m_read_idx_);
+                if (n < 0) {
+                    if (errno == EINTR) {
+                        continue; // interrupted, retry
+                    }
+                    if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                        break; // No more data to read right now
+                    }
+                    else {
+                        perror("read");
+                        close_conn();
+                        return false;
+                    }
+                }
+                else if (n == 0) {
+                    // Client closed the connection
+                    close_conn();
+                    return false;
+                }
+                m_read_idx_ += n;
+            }
+            return true;
         }
-        return true;
     }
 
     LINE_STATE parse_line() {

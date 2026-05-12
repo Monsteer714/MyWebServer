@@ -115,7 +115,11 @@ void Util::addfd(int epollfd, int fd, bool one_shot, int trigmode) {
     epoll_event event;
     event.data.fd = fd;
 
-    event.events =  EPOLLIN | EPOLLET | EPOLLRDHUP;
+    if (trigmode == 0) {
+        event.events = EPOLLIN | EPOLLRDHUP;
+    } else {
+        event.events =  EPOLLIN | EPOLLET | EPOLLRDHUP;
+    }
 
     if (one_shot) {
         event.events |= EPOLLONESHOT;

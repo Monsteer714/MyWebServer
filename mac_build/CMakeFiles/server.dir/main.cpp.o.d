@@ -998,4 +998,5 @@ CMakeFiles/server.dir/main.cpp.o: \
   /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/threadpool/threadpool.h \
   /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/threadpool/../locker/locker.h \
   /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/timer/timer_lst.h \
-  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/timer/../log/log.h
+  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/timer/../log/log.h \
+  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/config.h

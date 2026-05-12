@@ -36,6 +36,7 @@ endif()
 
 # 多线程版本（线程池）
 add_executable(server main.cpp
+        config.cpp
         log/log.cpp
         timer/timer_lst.cpp
         threadpool/threadpool.h

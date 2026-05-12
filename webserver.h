@@ -35,37 +35,26 @@ private:
     int m_server_fd_ = {-1};
     int m_epoll_fd_ = {-1};
     size_t m_max_events_num_ = 1024;
+    int m_actor_model_ = {}; //Reactor : 0, Proactor : 1;
+    int m_TRIGMode_ = {};
+    int m_LISTENTrigMode_ = {}; //Trigger mode of server, LT : 0, ET : 1;
+    int m_CONNTrigMode_ = {}; //Trigger mode of client, LT : 0, ET : 1;
 
     //timer
     Util m_util_ = {};
     int m_pipe_fd_[2] = {};
     client_data* m_user_timer_ = {};
 
+
     void setNonBlocking(int fd) {
         int flags = fcntl(fd, F_GETFL, 0);
         fcntl(fd, F_SETFL, flags | O_NONBLOCK);
     }
 
-    void epollAdd(int fd) {
-        epoll_event ev{};
-        ev.data.fd = fd;
-        ev.events = EPOLLIN | EPOLLONESHOT;
-        epoll_ctl(m_epoll_fd_, EPOLL_CTL_ADD, fd, &ev);
-    }
-
-    void epollAddServer(int fd) {
-        epoll_event ev{};
-        ev.data.fd = fd;
-        ev.events = EPOLLIN;
-        epoll_ctl(m_epoll_fd_, EPOLL_CTL_ADD, fd, &ev);
-    }
-
     //初始化新的http连接，初始化该连接对应的定时器
     void createConn(int connfd) {
-        m_user_[connfd].init(connfd);
-
-        m_user_timer_[connfd].m_sock_fd_ = connfd;
-        auto timer = std::make_shared<util_timer>();
+        m_user_[connfd].init(connfd, m_CONNTrigMode_);
+ m_user_timer_[connfd].m_sock_fd_ = connfd; auto timer = std::make_shared<util_timer>();
         timer->cb_func = cb_func;
         timer->user_data_ = &m_user_timer_[connfd];
         timer->expire_ = time(NULL) + 3 * TIME_SLOT;
@@ -73,13 +62,8 @@ private:
         m_util_.m_timer_.add_timer(timer);
     }
 
-    void createLog() {
-        Log::getInstance()->init("./ServerLog", 0, 2048, 5000000, 800);
-    }
-
 public:
     WebServer() {
-        m_thread_pool_ = new Threadpool<http_conn>(8, 10000, 0);
         m_user_ = new http_conn[MAX_FD];
         m_user_timer_ = new client_data[MAX_FD];
     }
@@ -92,6 +76,38 @@ public:
             close(m_epoll_fd_);
         if (m_server_fd_ >= 0)
             close(m_server_fd_);
+    }
+
+    void init(int m_TRIGMode, int m_actor_model) {
+        m_TRIGMode_ = m_TRIGMode;
+        m_actor_model_ = m_actor_model;
+    }
+
+    void setTrigMode() {
+        if (m_TRIGMode_ == 0) {
+            m_LISTENTrigMode_ = 0;// LT
+            m_CONNTrigMode_ = 0;  // LT
+        }
+        if (m_TRIGMode_ == 1) {
+            m_LISTENTrigMode_ = 1;// ET
+            m_CONNTrigMode_ = 0;  // LT
+        }
+        if (m_TRIGMode_ == 2) {
+            m_LISTENTrigMode_ = 0;// LT
+            m_CONNTrigMode_ = 1;  // ET
+        }
+        if (m_TRIGMode_ == 3) {
+            m_LISTENTrigMode_ = 1;// ET
+            m_CONNTrigMode_ = 1;  // ET
+        }
+    }
+
+    void createThreadPool() {
+        m_thread_pool_ = new Threadpool<http_conn>(8, 10000, m_actor_model_);
+    }
+
+    void createLog() {
+        Log::getInstance()->init("./ServerLog", 0, 2048, 5000000, 800);
     }
 
     void start() {
@@ -115,12 +131,12 @@ public:
         assert(ret >= 0);
         //
 
-
         setNonBlocking(m_server_fd_);
 
         //创建内核epoll事件表
         m_epoll_fd_ = epoll_create1(0);
         assert(m_epoll_fd_ >= 0);
+        m_util_.addfd(m_epoll_fd_, m_server_fd_, false, m_LISTENTrigMode_);
 
         http_conn::m_epollfd_ = m_epoll_fd_;
 
@@ -139,24 +155,20 @@ public:
         m_util_.addsig(SIGTERM, Util::sig_handler, false);
         alarm(TIME_SLOT);
 
-        epollAddServer(m_server_fd_);
-
-        createLog();
-
         Log::LOG_INFO("Web server started on port %d", 8888);
     }
 
     void adjustTimer(int fd) {
         auto timer = m_user_timer_[fd].m_timer_;
-        timer->expire_ = time(NULL) + 3 * TIME_SLOT;
-        m_util_.m_timer_.adjust_timer(timer);
+        if (timer) {
+            timer->expire_ = time(NULL) + 3 * TIME_SLOT;
+            m_util_.m_timer_.adjust_timer(timer);
 
-        LOG_INFO("adjust %d timer", fd);
+            LOG_INFO("adjust %d timer", fd);
+        }
     }
 
-
-    void dealWithTimer(int fd) {
-        auto timer = m_user_timer_[fd].m_timer_;
+    void dealWithTimer(int fd) { auto timer = m_user_timer_[fd].m_timer_;
         if (timer) {
             timer->cb_func(timer->user_data_);
             m_util_.m_timer_.del_timer(timer);
@@ -164,22 +176,68 @@ public:
         LOG_INFO("close fd %d", fd);
     }
 
-    void dealwithclient() {
-    }
-    void dealwithread(int fd) {
-        adjustTimer(fd);
+    bool dealwithclient() {
+        if (m_LISTENTrigMode_ == 0) { // LT
+            int client_fd = accept(m_server_fd_, nullptr, nullptr);
+            if (client_fd < 0) {
+                return false;
+            }
+            if (client_fd >= MAX_FD) {
+                return false;
+            }
+            createConn(client_fd);
+        } else { //ET
+            while (true) {
+                int client_fd = accept(m_server_fd_, nullptr, nullptr);
+                if (client_fd < 0) {
+                    if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                        break;
+                    }
+                    if (errno == EINTR) {
+                        continue;
+                    }
+                    perror("accept");
+                    break;
+                }
 
+                if (client_fd >= MAX_FD) {
+                    return false;
+                }
+
+                createConn(client_fd);
+            }
+        }
+        return true;
+    }
+
+    void dealwithread(int fd) {
         auto conn = m_user_ + fd;
-        LOG_INFO("%s", "epollin in webserver loop");
-        m_thread_pool_->append_s(conn, 0);
+        if (m_actor_model_ == 0) {
+            m_thread_pool_->append_s(conn, 0);
+            adjustTimer(fd);
+        } else {
+            if (conn->read_once()) {
+                m_thread_pool_->append(conn);
+                adjustTimer(fd);
+            } else {
+                dealWithTimer(fd);
+            }
+        }
     }
 
     void dealwithwrite(int fd) {
-        adjustTimer(fd);
-
         auto conn = m_user_ + fd;
-        LOG_INFO("%s", "epollout in webserver loop");
-        m_thread_pool_->append_s(conn, 1);
+        if (m_actor_model_ == 0) {
+            m_thread_pool_->append_s(conn, 1);
+            adjustTimer(fd);
+        } else {
+            if (conn->write()) {
+                m_thread_pool_->append(conn);
+                adjustTimer(fd);
+            } else {
+                dealWithTimer(fd);
+            }
+        }
     }
 
     bool dealwithsignal(bool& timeout, bool& stop_server) {
@@ -219,24 +277,8 @@ public:
             for (int i = 0; i < n; ++i) {
                 int fd = events[i].data.fd;
                 if (fd == m_server_fd_) { // 新连接
-                    while (true) {
-                        int client_fd = accept(m_server_fd_, nullptr, nullptr);
-                        if (client_fd < 0) {
-                            if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                                break;
-                            }
-                            if (errno == EINTR) {
-                                continue;
-                            }
-                            perror("accept");
-                            break;
-                        }
-
-                        setNonBlocking(client_fd);
-
-                        epollAdd(client_fd);
-
-                        createConn(client_fd);
+                    if (!dealwithclient()) {
+                        continue;
                     }
                 }
                 else if (events[i].events & (EPOLLERR | EPOLLHUP | EPOLLRDHUP)) {

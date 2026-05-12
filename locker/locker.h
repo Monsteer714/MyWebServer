@@ -8,32 +8,6 @@
 #include <pthread.h>
 #include <semaphore.h>
 
-class sem {
-private:
-    sem_t sem_ = {};
-
-public:
-    sem() {
-        sem_init(&sem_, 0, 0);
-    }
-
-    ~sem() {
-        sem_destroy(&sem_);
-    }
-
-    bool wait() {
-        return sem_wait(&sem_) == 0;
-    }
-
-    bool post() {
-        return sem_post(&sem_) == 0;
-    }
-
-    sem_t* getSem() {
-        return &sem_;
-    }
-};
-
 class locker {
 private:
     pthread_mutex_t mutex_ = {};
