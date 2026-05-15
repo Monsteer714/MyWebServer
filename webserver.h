@@ -54,17 +54,16 @@ private:
         fcntl(fd, F_SETFL, flags | O_NONBLOCK);
     }
 
-    //初始化新的http连接
+    //初始化新的http连接，初始化该连接对应的定时器
     void createConn(int connfd) {
         m_user_[connfd].init(connfd, m_CONNTrigMode_);
-        // ---- 定时器功能已注释 ----
-        // m_user_timer_[connfd].m_sock_fd_ = connfd;
-        // auto timer = std::make_shared<util_timer>();
-        // timer->cb_func = cb_func;
-        // timer->user_data_ = &m_user_timer_[connfd];
-        // timer->expire_ = time(NULL) + 3 * TIME_SLOT;
-        // m_user_timer_[connfd].m_timer_ = timer;
-        // m_util_.m_timer_.add_timer(timer);
+        m_user_timer_[connfd].m_sock_fd_ = connfd;
+        auto timer = std::make_shared<util_timer>();
+        timer->cb_func = cb_func;
+        timer->user_data_ = &m_user_timer_[connfd];
+        timer->expire_ = time(NULL) + 3 * TIME_SLOT;
+        m_user_timer_[connfd].m_timer_ = timer;
+        m_util_.m_timer_.add_timer(timer);
     }
 
 public:
@@ -157,28 +156,30 @@ public:
         setNonBlocking(m_pipe_fd_[1]);
         m_util_.addfd(m_epoll_fd_, m_pipe_fd_[0], false, 0);
         m_util_.addsig(SIGPIPE, SIG_IGN, false);
-        // m_util_.addsig(SIGALRM, Util::sig_handler, false); // 定时器已注释
+        m_util_.addsig(SIGALRM, Util::sig_handler, false);
         m_util_.addsig(SIGTERM, Util::sig_handler, false);
-        // alarm(TIME_SLOT); // 定时器已注释
+        alarm(TIME_SLOT);
 
         Log::LOG_INFO("Web server started on port %d", 8888);
     }
 
     void adjustTimer(int fd) {
-        // ---- 定时器功能已注释 ----
-        // auto timer = m_user_timer_[fd].m_timer_;
-        // if (timer) {
-        //     timer->expire_ = time(NULL) + 3 * TIME_SLOT;
-        //     m_util_.m_timer_.adjust_timer(timer);
-        //     LOG_INFO("adjust %d timer", fd);
-        // }
+        auto timer = m_user_timer_[fd].m_timer_;
+        if (timer) {
+            timer->expire_ = time(NULL) + 3 * TIME_SLOT;
+            m_util_.m_timer_.adjust_timer(timer);
+
+            LOG_INFO("adjust %d timer", fd);
+        }
     }
 
     void dealWithTimer(int fd) {
-        // ---- 定时器功能已注释，直接关闭连接 ----
-        epoll_ctl(m_epoll_fd_, EPOLL_CTL_DEL, fd, nullptr);
-        if (fd > 0) {
-            close(fd);
+        auto timer = m_user_timer_[fd].m_timer_;
+        if (timer) {
+            timer->cb_func(timer->user_data_);
+            m_util_.m_timer_.del_timer(timer);
+
+            LOG_INFO("delete %d timer", fd);
         }
     }
 
@@ -221,15 +222,15 @@ public:
         auto conn = m_user_ + fd;
         if (m_actor_model_ == 0) {
             m_thread_pool_->append_s(conn, 0);
-            // adjustTimer(fd); // 定时器已注释
+            adjustTimer(fd);
         }
         else {
             if (conn->read_once()) {
                 m_thread_pool_->append(conn);
-                // adjustTimer(fd); // 定时器已注释
+                adjustTimer(fd);
             }
             else {
-                dealWithTimer(fd); // 定时器已注释，dealWithTimer内直接关闭fd
+                dealWithTimer(fd);
             }
         }
     }
@@ -238,14 +239,14 @@ public:
         auto conn = m_user_ + fd;
         if (m_actor_model_ == 0) {
             m_thread_pool_->append_s(conn, 1);
-            // adjustTimer(fd); // 定时器已注释
+            adjustTimer(fd);
         }
         else {
             if (conn->write()) {
-                // adjustTimer(fd); // 定时器已注释
+                adjustTimer(fd);
             }
             else {
-                dealWithTimer(fd); // 定时器已注释，dealWithTimer内直接关闭fd
+                dealWithTimer(fd);
             }
         }
     }
@@ -292,8 +293,8 @@ public:
                     }
                 }
                 else if (events[i].events & (EPOLLERR | EPOLLHUP | EPOLLRDHUP)) {
-                    //错误，关闭连接（定时器已注释，dealWithTimer内直接关闭fd）
                     dealWithTimer(fd);
+                    //错误，关闭连接；
                 }
                 else if ((fd == m_pipe_fd_[0]) && (events[i].events & EPOLLIN)) {
                     dealwithsignal(timeout, stop_server);
@@ -306,12 +307,11 @@ public:
                     dealwithwrite(fd);
                 }
             }
-            // ---- 定时器 tick 已注释 ----
-            // if (timeout) {
-            //     m_util_.time_handler();
-            //     LOG_INFO("%s", "tick.");
-            //     timeout = false;
-            // }
+            if (timeout) {
+                m_util_.time_handler();
+                LOG_INFO("%s", "tick.");
+                timeout = false;
+            }
         }
     }
 };
