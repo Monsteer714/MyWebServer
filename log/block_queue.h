@@ -33,21 +33,15 @@ public:
     bool push(const T& item) {
         m_mutex_.lock();
 
-        while (m_queue_.size() >= m_max_size_ && !m_shutdown_) {
-            if (!m_cond_.wait(m_mutex_.getMutex())) {
-                m_mutex_.unlock();
-                return false;
-            }
-        }
-
-        if (m_shutdown_) {
+        if (m_queue_.size() >= m_max_size_) {
+            m_cond_.broadcast();
             m_mutex_.unlock();
             return false;
         }
 
         m_queue_.push(item);
 
-        m_cond_.signal();
+        m_cond_.broadcast();
         m_mutex_.unlock();
         return true;
     }

@@ -44,10 +44,12 @@ private:
                     if (task->read_once()) {
                         task->process();
                     } else {
+                        task->m_error_flag_ = true;
                     }
                 } else { //write
                     if (task->write()) {
                     } else {
+                        task->m_error_flag_ = true;
                     }
                 }
             } else { // Proactor

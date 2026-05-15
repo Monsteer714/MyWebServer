@@ -14,6 +14,8 @@ Config::Config() {
     Config::TRIG_MODE = 0;
 
     Config::ACTOR_MODEL = 0;
+
+    Config::LOG_CLOSE = 0;
 }
 
 void Config::parse_args(int argc, char* argv[]) {
@@ -43,6 +45,9 @@ void Config::parse_args(int argc, char* argv[]) {
             Config::ACTOR_MODEL = atoi(optarg);
             break;
         }
+        case 'c':
+            Config::LOG_CLOSE = atoi(optarg);
+            break;
         default:
             break;
         }

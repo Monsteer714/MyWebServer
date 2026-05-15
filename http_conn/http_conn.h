@@ -21,6 +21,7 @@
 #include <stdarg.h>
 
 #include "../log/log.h"
+#include "../timer/timer_lst.h"
 
 inline const char* ok_200_title = "OK";
 inline const char* error_400_title = "Bad Request";
@@ -34,7 +35,7 @@ inline const char* error_500_form = "There was an unusual problem serving the re
 
 class http_conn {
 public:
-    constexpr static int READ_BUFFER_SIZE = 1024;
+    constexpr static int READ_BUFFER_SIZE = 2048;
     constexpr static int WRITE_BUFFER_SIZE = 1024;
 
     enum METHOD {
@@ -99,9 +100,9 @@ private:
         event.data.fd = fd;
 
         if (m_TRIGMode_ == 0) {
-            event.events = EPOLLIN | EPOLLONESHOT;
+            event.events = EPOLLIN | EPOLLRDHUP;
         } else {
-            event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
+            event.events = EPOLLIN | EPOLLET | EPOLLRDHUP;
         }
 
         if (oneshot) {
@@ -190,16 +191,6 @@ public:
         memset(m_write_buffer_, '\0', sizeof(m_write_buffer_));
     }
 
-    static std::string read_file(const std::string& path) {
-        std::ifstream file(path);
-        if (!file.is_open()) {
-            return "";
-        }
-        std::stringstream ss;
-        ss << file.rdbuf();
-        return ss.str();
-    }
-
     bool read_once() {
         if (m_read_idx_ >= READ_BUFFER_SIZE) {
             return false;
@@ -207,7 +198,6 @@ public:
         if (m_TRIGMode_ == 0) { //LT
             ssize_t n = ::read(m_client_fd_, m_read_buffer_ + m_read_idx_, READ_BUFFER_SIZE - m_read_idx_);
             if (n <= 0) {
-                close_conn();
                 return false;
             }
             m_read_idx_ += n;
@@ -224,13 +214,11 @@ public:
                     }
                     else {
                         perror("read");
-                        close_conn();
                         return false;
                     }
                 }
                 else if (n == 0) {
                     // Client closed the connection
-                    close_conn();
                     return false;
                 }
                 m_read_idx_ += n;
@@ -288,7 +276,6 @@ public:
         char* text = {};
         while ((line_state = parse_line()) == LINE_OK) {
             text = get_line();
-            LOG_INFO("%s", text);
             m_start_line_ = m_check_idx_;
             switch (m_check_state_) {
             case CHECK_REQUEST:
@@ -452,7 +439,7 @@ public:
                 m_bytes_to_send_ = m_write_idx_ + m_file_stat_.st_size;
                 return true;
             } else {
-                const char* body = "<html><body><body><html>";
+                const char* body = "<html><body></body></html>";
                 add_headers(std::strlen(body));
                 if (!add_content(body)) {
                     return false;
@@ -467,7 +454,7 @@ public:
         m_iovec_[0].iov_len = m_write_idx_;
         m_iovec_count_ = 1;
         m_bytes_to_send_ = m_write_idx_;
-        LOG_INFO("%s", "processed_write")
+        LOG_INFO("%s", "processed_write");
         return true;
     }
 
@@ -482,7 +469,6 @@ public:
                     return true;
                 }
                 unmap();
-                close_conn();
                 return false;
             }
 
@@ -505,7 +491,6 @@ public:
                     init();
                     return true;
                 } else {
-                    close_conn();
                     return false;
                 }
             }
@@ -526,7 +511,7 @@ public:
         }
         auto write_ret = process_write(read_ret);
         if (!write_ret) {
-            LOG_INFO("%s", "write error");
+            LOG_INFO("%s", "process write error");
             close_conn();
             return;
         }

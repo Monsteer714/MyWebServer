@@ -17,8 +17,11 @@ public:
 
     int LOG_WRITE;
 
+    int LOG_CLOSE;
+
     int TRIG_MODE;
 
     int ACTOR_MODEL;
+
 };
 #endif //MYWEBSERVER_CONFIG_H

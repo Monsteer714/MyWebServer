@@ -118,6 +118,9 @@ void Log::write_log(int level, const char* format, ...) {
 }
 
 void Log::flush() {
+    if (m_close_log_) {
+        return;
+    }
     m_mutex_.lock();
     fflush(m_fp_);
     m_mutex_.unlock();

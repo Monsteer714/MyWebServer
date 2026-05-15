@@ -98,12 +98,15 @@ void sort_timer_lst::tick() {
 }
 
 void cb_func(client_data* data) {
-    int fd = data->m_sock_fd_;
+    int &fd = data->m_sock_fd_;
 
     epoll_ctl(Util::u_epoll_fd_, EPOLL_CTL_DEL, fd, 0);
 
-    LOG_INFO("close fd %d", fd);
-    close(fd);
+    if (fd > 0) {
+        close(fd);
+        LOG_INFO("close fd %d", fd);
+        fd = -1;
+    }
 }
 
 void Util::setnonblocking(int fd) {
