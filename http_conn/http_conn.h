@@ -454,7 +454,6 @@ public:
         m_iovec_[0].iov_len = m_write_idx_;
         m_iovec_count_ = 1;
         m_bytes_to_send_ = m_write_idx_;
-        LOG_INFO("%s", "processed_write");
         return true;
     }
 
@@ -511,7 +510,6 @@ public:
         }
         auto write_ret = process_write(read_ret);
         if (!write_ret) {
-            LOG_INFO("%s", "process write error");
             close_conn();
             return;
         }

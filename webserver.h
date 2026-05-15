@@ -34,7 +34,7 @@ private:
     //epoll
     int m_server_fd_ = {-1};
     int m_epoll_fd_ = {-1};
-    size_t m_max_events_num_ = 1024;
+    size_t m_max_events_num_ = 10000;
     int m_actor_model_ = {}; //Reactor : 0, Proactor : 1;
     int m_TRIGMode_ = {};
     int m_LISTENTrigMode_ = {}; //Trigger mode of server, LT : 0, ET : 1;
