@@ -7,6 +7,8 @@ file(REMOVE_RECURSE
   "CMakeFiles/server.dir/main.cpp.o.d"
   "CMakeFiles/server.dir/timer/timer_lst.cpp.o"
   "CMakeFiles/server.dir/timer/timer_lst.cpp.o.d"
+  "CMakeFiles/server.dir/util/util.cpp.o"
+  "CMakeFiles/server.dir/util/util.cpp.o.d"
   "server"
   "server.pdb"
 )

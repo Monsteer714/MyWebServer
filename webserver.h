@@ -16,7 +16,9 @@
 #include "http_conn/http_conn.h"
 #include "log/log.h"
 #include "threadpool/threadpool.h"
+#include "timer/timer_policy.h"
 #include "timer/timer_lst.h"
+#include "timer/timer_wheel.h"
 
 
 constexpr int MAX_FD = 65535;
@@ -58,12 +60,12 @@ private:
     void createConn(int connfd) {
         m_user_[connfd].init(connfd, m_CONNTrigMode_);
         m_user_timer_[connfd].m_sock_fd_ = connfd;
-        auto timer = std::make_shared<util_timer>();
+        auto timer = m_util_.m_timer_->create_timer();
         timer->cb_func = cb_func;
         timer->user_data_ = &m_user_timer_[connfd];
-        timer->expire_ = time(NULL) + 3 * TIME_SLOT;
+        timer->adjust_expire(TIME_SLOT);
         m_user_timer_[connfd].m_timer_ = timer;
-        m_util_.m_timer_.add_timer(timer);
+        m_util_.m_timer_->add_timer(timer);
     }
 
 public:
@@ -153,6 +155,7 @@ public:
         Util::u_pipe_fd_ = m_pipe_fd_;
 
         m_util_.init(TIME_SLOT);
+        m_util_.init_timer(std::make_unique<sort_timer_lst>());
         setNonBlocking(m_pipe_fd_[1]);
         m_util_.addfd(m_epoll_fd_, m_pipe_fd_[0], false, 0);
         m_util_.addsig(SIGPIPE, SIG_IGN, false);
@@ -166,8 +169,8 @@ public:
     void adjustTimer(int fd) {
         auto timer = m_user_timer_[fd].m_timer_;
         if (timer) {
-            timer->expire_ = time(NULL) + 3 * TIME_SLOT;
-            m_util_.m_timer_.adjust_timer(timer);
+            timer->adjust_expire(TIME_SLOT);
+            m_util_.m_timer_->adjust_timer(timer);
 
             LOG_INFO("adjust %d timer", fd);
         }
@@ -177,7 +180,7 @@ public:
         auto timer = m_user_timer_[fd].m_timer_;
         if (timer) {
             timer->cb_func(timer->user_data_);
-            m_util_.m_timer_.del_timer(timer);
+            m_util_.m_timer_->del_timer(timer);
 
             LOG_INFO("delete %d timer", fd);
         }
@@ -221,8 +224,8 @@ public:
     void dealwithread(int fd) {
         auto conn = m_user_ + fd;
         if (m_actor_model_ == 0) {
-            m_thread_pool_->append_s(conn, 0);
             adjustTimer(fd);
+            m_thread_pool_->append_s(conn, 0);
         }
         else {
             if (conn->read_once()) {
@@ -238,8 +241,8 @@ public:
     void dealwithwrite(int fd) {
         auto conn = m_user_ + fd;
         if (m_actor_model_ == 0) {
-            m_thread_pool_->append_s(conn, 1);
             adjustTimer(fd);
+            m_thread_pool_->append_s(conn, 1);
         }
         else {
             if (conn->write()) {

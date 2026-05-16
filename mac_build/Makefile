@@ -225,6 +225,30 @@ timer/timer_lst.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/server.dir/build.make CMakeFiles/server.dir/timer/timer_lst.cpp.s
 .PHONY : timer/timer_lst.cpp.s
 
+util/util.o: util/util.cpp.o
+.PHONY : util/util.o
+
+# target to build an object file
+util/util.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/server.dir/build.make CMakeFiles/server.dir/util/util.cpp.o
+.PHONY : util/util.cpp.o
+
+util/util.i: util/util.cpp.i
+.PHONY : util/util.i
+
+# target to preprocess a source file
+util/util.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/server.dir/build.make CMakeFiles/server.dir/util/util.cpp.i
+.PHONY : util/util.cpp.i
+
+util/util.s: util/util.cpp.s
+.PHONY : util/util.s
+
+# target to generate assembly for a file
+util/util.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/server.dir/build.make CMakeFiles/server.dir/util/util.cpp.s
+.PHONY : util/util.cpp.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -246,6 +270,9 @@ help:
 	@echo "... timer/timer_lst.o"
 	@echo "... timer/timer_lst.i"
 	@echo "... timer/timer_lst.s"
+	@echo "... util/util.o"
+	@echo "... util/util.i"
+	@echo "... util/util.s"
 .PHONY : help
 
 

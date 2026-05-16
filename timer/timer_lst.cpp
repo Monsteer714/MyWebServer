@@ -20,17 +20,19 @@ sort_timer_lst::~sort_timer_lst() {
     }
 }
 
-void sort_timer_lst::add_timer(const std::shared_ptr<util_timer> &timer) {
-    if (!timer) {
+void sort_timer_lst::add_timer(const std::shared_ptr<timer> &t) {
+    if (!t) {
         return;
     }
+    auto timer = std::static_pointer_cast<util_timer>(t);
     add_timer(timer, head_);
 }
 
-void sort_timer_lst::adjust_timer(const std::shared_ptr<util_timer> &timer) {
-    if (!timer) {
+void sort_timer_lst::adjust_timer(const std::shared_ptr<timer> &t) {
+    if (!t) {
         return;
     }
+    auto timer = std::static_pointer_cast<util_timer>(t);
     auto next = timer->next_;
     auto prev = timer->prev_.lock();
 
@@ -43,10 +45,11 @@ void sort_timer_lst::adjust_timer(const std::shared_ptr<util_timer> &timer) {
     add_timer(timer, head_);
 }
 
-void sort_timer_lst::del_timer(const std::shared_ptr<util_timer> &timer) {
-    if (!timer) {
+void sort_timer_lst::del_timer(const std::shared_ptr<timer> &t) {
+    if (!t) {
         return;
     }
+    auto timer = std::static_pointer_cast<util_timer>(t);
 
     auto next = timer->next_;
     auto prev = timer->prev_.lock();
@@ -97,65 +100,7 @@ void sort_timer_lst::tick() {
     }
 }
 
-void cb_func(client_data* data) {
-    int &fd = data->m_sock_fd_;
-
-    epoll_ctl(Util::u_epoll_fd_, EPOLL_CTL_DEL, fd, 0);
-
-    if (fd > 0) {
-        close(fd);
-        LOG_INFO("close fd %d", fd);
-        fd = -1;
-    }
-}
-
-void Util::setnonblocking(int fd) {
-    int flag = fcntl(fd, F_GETFL);
-    fcntl(fd, F_SETFL, flag | O_NONBLOCK);
-}
-
-void Util::addfd(int epollfd, int fd, bool one_shot, int trigmode) {
-    epoll_event event;
-    event.data.fd = fd;
-
-    if (trigmode == 0) {
-        event.events = EPOLLIN | EPOLLRDHUP;
-    } else {
-        event.events =  EPOLLIN | EPOLLET | EPOLLRDHUP;
-    }
-
-    if (one_shot) {
-        event.events |= EPOLLONESHOT;
-    }
-
-    epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, &event);
-}
-
-void Util::init(int timeslot) {
-    m_time_slot_ = timeslot;
-}
-
-void Util::sig_handler(int sig) {
-    int saved_errno = errno;
-
-    int msg = sig;
-    send(u_pipe_fd_[1], &msg, 1, 0);
-    errno = saved_errno;
-}
-
-void Util::addsig(int sig, void (*handler)(int), bool restart) {
-    struct sigaction sa;
-    memset(&sa, '\0', sizeof(sa));
-    sa.sa_handler = handler;
-    if (restart) {
-        sa.sa_flags |= SA_RESTART;
-    }
-    sigfillset(&sa.sa_mask);
-    int ret = sigaction(sig, &sa, nullptr);
-    assert(ret != -1);
-}
-
-void Util::time_handler() {
-    m_timer_.tick();
-    alarm(m_time_slot_);
+// 工厂方法 — 升序链表容器创建对应的定时器节点
+std::shared_ptr<timer> sort_timer_lst::create_timer() {
+    return std::make_shared<util_timer>();
 }

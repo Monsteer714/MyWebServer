@@ -39,6 +39,7 @@ add_executable(server main.cpp
         config.cpp
         log/log.cpp
         timer/timer_lst.cpp
+        util/util.cpp
         threadpool/threadpool.h
         webserver.h)
 target_link_libraries(server Threads::Threads ${EPOLL_SHIM_LIB})

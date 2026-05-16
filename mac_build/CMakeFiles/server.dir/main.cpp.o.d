@@ -996,8 +996,12 @@ CMakeFiles/server.dir/main.cpp.o: \
   /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/http_conn/../log/block_queue.h \
   /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/http_conn/../timer/timer_lst.h \
   /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/http_conn/../timer/../log/log.h \
+  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/http_conn/../timer/timer_policy.h \
   /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/log/log.h \
   /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/threadpool/threadpool.h \
   /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/threadpool/../locker/locker.h \
+  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/timer/timer_policy.h \
   /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/timer/timer_lst.h \
+  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/timer/timer_wheel.h \
+  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/timer/../log/log.h \
   /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/config.h

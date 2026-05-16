@@ -28,59 +28,37 @@
 
 #include <time.h>
 #include "../log/log.h"
+#include "timer_policy.h"
 
-class util_timer;
 
-struct client_data {
-    int m_sock_fd_;
-    std::shared_ptr<util_timer> m_timer_;
-};
-
-class util_timer {
+class util_timer : public timer {
 public:
-    void (*cb_func)(client_data* data);
-    time_t expire_ = {};
+    // cb_func、expire_、user_data_、adjust_expire 均由基类 timer 提供
 
-    client_data* user_data_ = {};
+    // 升序链表特有：前后指针
     std::weak_ptr<util_timer> prev_ = {};
     std::shared_ptr<util_timer> next_ = {};
+
 public:
-    util_timer() : next_(nullptr) {}
+    util_timer() : next_(nullptr) {
+    }
 };
 
-class sort_timer_lst {
+class sort_timer_lst : public timer_container {
 private:
-    void add_timer(const std::shared_ptr<util_timer> &timer, const std::shared_ptr<util_timer> &head);
+    void add_timer(const std::shared_ptr<util_timer>& timer, const std::shared_ptr<util_timer>& head);
     std::weak_ptr<util_timer> tail_ = {};
     std::shared_ptr<util_timer> head_ = {};
+
 public:
     sort_timer_lst();
-    ~sort_timer_lst();
+    ~sort_timer_lst() override;
 
-    void add_timer(const std::shared_ptr<util_timer> &timer);
-    void adjust_timer(const std::shared_ptr<util_timer> &timer);
-    void del_timer(const std::shared_ptr<util_timer> &timer);
-    void tick();
+    std::shared_ptr<timer> create_timer() override;
+    void add_timer(const std::shared_ptr<timer>& timer) override;
+    void adjust_timer(const std::shared_ptr<timer>& timer) override;
+    void del_timer(const std::shared_ptr<timer>& timer) override;
+    void tick() override;
 };
-
-class Util {
-public:
-    inline static int u_epoll_fd_ = {};
-    inline static int *u_pipe_fd_ = {};
-    sort_timer_lst m_timer_ = {};
-    int m_time_slot_ = {};
-public:
-    Util() {}
-    ~Util() {}
-
-    void init(int timeslot);
-    void addsig(int sig, void (*handler)(int), bool restart);
-    void setnonblocking(int fd);
-    void addfd(int epollfd, int fd, bool one_shot, int trigmode);
-    void time_handler();
-    static void sig_handler(int sig);
-};
-
-void cb_func(client_data* data);
 
 #endif //MYWEBSERVER_TIMER_LST_H
