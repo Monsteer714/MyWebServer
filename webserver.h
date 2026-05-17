@@ -43,8 +43,9 @@ private:
     int m_CONNTrigMode_ = {}; //Trigger mode of client, LT : 0, ET : 1;
 
     //timer
-    Util m_util_ = {};
     int m_pipe_fd_[2] = {};
+    int m_timer_model_ = {};
+    Util m_util_ = {};
     client_data* m_user_timer_ = {};
 
     //log
@@ -84,10 +85,11 @@ public:
             close(m_server_fd_);
     }
 
-    void init(int m_TRIGMode, int m_actor_model, int m_close_log) {
+    void init(int m_TRIGMode, int m_actor_model, int m_close_log, int m_timer_model) {
         m_TRIGMode_ = m_TRIGMode;
         m_actor_model_ = m_actor_model;
         m_close_log_ = m_close_log;
+        m_timer_model_ = m_timer_model;
     }
 
     void setTrigMode() {
@@ -134,7 +136,7 @@ public:
 
         int ret = bind(m_server_fd_, (sockaddr*)&addr, sizeof(addr));
         assert(ret >= 0);
-        ret = listen(m_server_fd_, 1024);
+        ret = listen(m_server_fd_, 8192);
         assert(ret >= 0);
         //
 
@@ -155,7 +157,13 @@ public:
         Util::u_pipe_fd_ = m_pipe_fd_;
 
         m_util_.init(TIME_SLOT);
-        m_util_.init_timer(std::make_unique<sort_timer_lst>());
+        //设定定时器模式
+        if (m_timer_model_ == 0) {
+            m_util_.init_timer(std::make_unique<sort_timer_lst>());
+        }
+        if (m_timer_model_ == 1) {
+            m_util_.init_timer(std::make_unique<timer_wheel>());
+        }
         setNonBlocking(m_pipe_fd_[1]);
         m_util_.addfd(m_epoll_fd_, m_pipe_fd_[0], false, 0);
         m_util_.addsig(SIGPIPE, SIG_IGN, false);
@@ -172,7 +180,7 @@ public:
             timer->adjust_expire(TIME_SLOT);
             m_util_.m_timer_->adjust_timer(timer);
 
-            LOG_INFO("adjust %d timer", fd);
+            LOG_INFO("adjust fd %d's timer", fd);
         }
     }
 
@@ -182,7 +190,7 @@ public:
             timer->cb_func(timer->user_data_);
             m_util_.m_timer_->del_timer(timer);
 
-            LOG_INFO("delete %d timer", fd);
+            LOG_INFO("delete fd %d's timer", fd);
         }
     }
 
@@ -253,6 +261,7 @@ public:
             }
         }
     }
+
 
     bool dealwithsignal(bool& timeout, bool& stop_server) {
         char signals[1024];

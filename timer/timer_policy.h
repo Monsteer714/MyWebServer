@@ -18,7 +18,9 @@ public:
     time_t expire_ = {};                             // 绝对过期时间，所有定时器通用
     void (*cb_func)(client_data* data) = nullptr;
 
-    virtual void adjust_expire(int time_slot);
+    void adjust_expire(int time_slot) {
+        this->expire_ = time(nullptr) + 3 * time_slot;
+    }
 
     virtual ~timer() = default;
 };

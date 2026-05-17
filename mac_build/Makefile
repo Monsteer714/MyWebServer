@@ -225,6 +225,30 @@ timer/timer_lst.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/server.dir/build.make CMakeFiles/server.dir/timer/timer_lst.cpp.s
 .PHONY : timer/timer_lst.cpp.s
 
+timer/timer_wheel.o: timer/timer_wheel.cpp.o
+.PHONY : timer/timer_wheel.o
+
+# target to build an object file
+timer/timer_wheel.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/server.dir/build.make CMakeFiles/server.dir/timer/timer_wheel.cpp.o
+.PHONY : timer/timer_wheel.cpp.o
+
+timer/timer_wheel.i: timer/timer_wheel.cpp.i
+.PHONY : timer/timer_wheel.i
+
+# target to preprocess a source file
+timer/timer_wheel.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/server.dir/build.make CMakeFiles/server.dir/timer/timer_wheel.cpp.i
+.PHONY : timer/timer_wheel.cpp.i
+
+timer/timer_wheel.s: timer/timer_wheel.cpp.s
+.PHONY : timer/timer_wheel.s
+
+# target to generate assembly for a file
+timer/timer_wheel.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/server.dir/build.make CMakeFiles/server.dir/timer/timer_wheel.cpp.s
+.PHONY : timer/timer_wheel.cpp.s
+
 util/util.o: util/util.cpp.o
 .PHONY : util/util.o
 
@@ -270,6 +294,9 @@ help:
 	@echo "... timer/timer_lst.o"
 	@echo "... timer/timer_lst.i"
 	@echo "... timer/timer_lst.s"
+	@echo "... timer/timer_wheel.o"
+	@echo "... timer/timer_wheel.i"
+	@echo "... timer/timer_wheel.s"
 	@echo "... util/util.o"
 	@echo "... util/util.i"
 	@echo "... util/util.s"

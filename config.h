@@ -23,5 +23,6 @@ public:
 
     int ACTOR_MODEL;
 
+    int TIMER_MODEL;
 };
 #endif //MYWEBSERVER_CONFIG_H

@@ -48,7 +48,7 @@ public:
 // 时间轮定时器容器 — 继承自 timer_container 抽象接口
 class timer_wheel : public timer_container {
 private:
-    static const int N_ = 60;   // 槽数量
+    static const int N_ = 10;   // 槽数量
     static const int SI_ = 1;   // 每个槽的时间间隔（秒）
     int cur_slot_ = {};
     std::vector<std::shared_ptr<tw_timer>> timer_ = {};

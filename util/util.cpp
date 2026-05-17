@@ -27,13 +27,7 @@
 
 #include "../log/log.h"
 
-// ========== timer 基类方法 ==========
-
-void timer::adjust_expire(int time_slot) {
-    this->expire_ = time(nullptr) + 3 * time_slot;
-}
-
-// ========== Util 静态成员定义 ==========
+// ========== Util 成员定义 ==========
 
 Util::Util() = default;
 Util::~Util() = default;
