@@ -51,7 +51,7 @@ public:
         m_mutex_.lock();
 
         while (m_queue_.empty() && !m_shutdown_) {
-            if (!m_cond_.wait(m_mutex_.getMutex())) {
+            if (!m_cond_.wait(m_mutex_)) {
                 m_mutex_.unlock();
                 return false;
             }

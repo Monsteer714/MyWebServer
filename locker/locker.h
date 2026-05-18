@@ -47,8 +47,8 @@ public:
         pthread_cond_destroy(&cond_);
     }
 
-    bool wait(pthread_mutex_t* mutex) {
-        return pthread_cond_wait(&cond_, mutex) == 0;
+    bool wait(locker& mutex) {
+        return pthread_cond_wait(&cond_, mutex.getMutex()) == 0;
     }
 
     bool signal() {

@@ -12,33 +12,48 @@
 template <typename T>
 class Threadpool {
 private:
+    struct Worker {
+        pthread_t thread_ = {};
+        spsc_queue<T*, 8192> task_queue_ = {};
+        locker mutex_ = {};
+        cond cond_ = {};
+        Threadpool* threadpool_ = {};
+    };
+
     size_t thread_num_ = {};
     size_t m_max_conn_num_ = {};
-    std::vector<pthread_t> threads_ = {};
-    std::queue<T*> task_queue_ = {};
-    locker mutex_ = {};
-    cond cond_ = {};
+    std::unique_ptr<Worker[]> workers_ = {};
+    std::atomic<size_t> round_robin_cnt{0};
+    std::atomic<bool> shutdown_{false};
     int m_actor_model_ = {};
-    bool shutdown_ = {};
 
     static void* worker(void* arg) {
-        auto tp = static_cast<Threadpool*>(arg);
+        auto& w = *static_cast<Worker*>(arg);
+        auto tp = w.threadpool_;
+
         while (true) {
-            tp->mutex_.lock();
+            T* task = nullptr;
 
-            while (tp->task_queue_.empty() && !tp->shutdown_) {
-                tp->cond_.wait(tp->mutex_.getMutex());
+            // 快速路径：无锁取任务，完全不碰 mutex
+            if (w.task_queue_.pop(task)) {
+                goto process_task;
             }
 
-            if (tp->shutdown_ && tp->task_queue_.empty()) {
-                tp->mutex_.unlock();
-                return nullptr;
+            // 慢速路径：队列空，持锁等待
+            w.mutex_.lock();
+            if (!w.task_queue_.pop(task)) {
+                while (!tp->shutdown_.load(std::memory_order_acquire)
+                       && !w.task_queue_.pop(task)) {
+                    w.cond_.wait(w.mutex_);
+                }
+                if (tp->shutdown_.load(std::memory_order_acquire)) {
+                    w.mutex_.unlock();
+                    return nullptr;
+                }
             }
+            w.mutex_.unlock();
 
-            auto task = tp->task_queue_.front();
-            tp->task_queue_.pop();
-
-            tp->mutex_.unlock();
+        process_task:
             if (tp->m_actor_model_ == 0) { //Reactor
                 if (task->m_state_ == 0) { //read
                     if (task->read_once()) {
@@ -67,14 +82,21 @@ public:
         thread_num_ = thread_num;
         m_max_conn_num_ = m_max_conn_num;
         m_actor_model_ = m_actor_model;
-        threads_ = std::vector<pthread_t>(thread_num_);
+        workers_ = std::make_unique<Worker[]>(thread_num_);
         size_t created = 0;
+
         for (size_t i = 0; i < thread_num_; ++i, ++created) {
-            if (pthread_create(&threads_[i], nullptr, worker, this) != 0) {
-                shutdown_ = true;
-                cond_.broadcast();
+            auto& w = workers_[i];
+            w.threadpool_ = this;
+
+            if (pthread_create(&w.thread_, nullptr, worker, &w) != 0) {
+                shutdown_.store(true, std::memory_order_relaxed);
                 for (size_t j = 0; j < created; ++j) {
-                    pthread_join(threads_[j], nullptr);
+                    auto& wj = workers_[j];
+                    wj.mutex_.lock();
+                    wj.cond_.signal();
+                    wj.mutex_.unlock();
+                    pthread_join(wj.thread_, nullptr);
                 }
                 throw std::runtime_error("pthread_create failed");
             }
@@ -82,39 +104,57 @@ public:
     };
 
     ~Threadpool() {
-        shutdown_ = true;
-        cond_.broadcast();
+        shutdown_.store(true, std::memory_order_release);
         for (size_t i = 0; i < thread_num_; ++i) {
-            pthread_join(threads_[i], nullptr);
+            auto& w = workers_[i];
+            w.mutex_.lock();
+            w.cond_.signal();
+            w.mutex_.unlock();
+            pthread_join(w.thread_, nullptr);
         }
     }
 
     bool append(T* task) {
-        mutex_.lock();
+        auto index = round_robin_cnt.fetch_add(1, std::memory_order_relaxed) % thread_num_;
 
-        if (task_queue_.size() >= m_max_conn_num_) {
-            mutex_.unlock();
+        auto& w = workers_[index];
+
+        bool was_empty = w.task_queue_.empty();
+
+        if (!w.task_queue_.push(task)) {
             return false;
         }
 
-        task_queue_.push(task);
-        mutex_.unlock();
-        cond_.signal();
+        if (was_empty) {
+            w.mutex_.lock();
+            w.cond_.signal();
+            w.mutex_.unlock();
+        }
+
         return true;
     }
 
     bool append_s(T* task, int state) {
-        mutex_.lock();
+        auto index = round_robin_cnt.fetch_add(1, std::memory_order_relaxed) % thread_num_;
 
-        if (task_queue_.size() >= m_max_conn_num_) {
-            mutex_.unlock();
+        auto& w = workers_[index];
+
+        bool was_empty = w.task_queue_.empty();
+
+        task->m_state_ = state;
+
+        if (!w.task_queue_.push(task)) {
             return false;
         }
-        task->m_state_ = state;
-        task_queue_.push(task);
-        mutex_.unlock();
-        cond_.signal();
+
+        if (was_empty) {
+            w.mutex_.lock();
+            w.cond_.signal();
+            w.mutex_.unlock();
+        }
+
         return true;
     }
 };
 #endif //MYWEBSERVER_THREADPOOL_H
+
