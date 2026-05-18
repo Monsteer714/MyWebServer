@@ -7,7 +7,7 @@
 #include "../locker/locker.h"
 #include <vector>
 #include <queue>
-
+#include "spsc_queue.h"
 
 template <typename T>
 class Threadpool {

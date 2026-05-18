@@ -20,9 +20,14 @@
 #include "timer/timer_lst.h"
 #include "timer/timer_wheel.h"
 
-
+//threads number for thread pool
+constexpr int THREAD_NUM = 8;
+//max connect number
 constexpr int MAX_FD = 65535;
+//time spand for one tick
 constexpr int TIME_SLOT = 5;
+//epoll table size
+constexpr int MAX_EVENT_NUM = 10000;
 
 class WebServer {
 private:
@@ -31,12 +36,10 @@ private:
 
     //threadpool
     Threadpool<http_conn>* m_thread_pool_ = {};
-    int m_max_threads_num_ = {};
 
     //epoll
     int m_server_fd_ = {-1};
     int m_epoll_fd_ = {-1};
-    size_t m_max_events_num_ = 10000;
     int m_actor_model_ = {}; //Reactor : 0, Proactor : 1;
     int m_TRIGMode_ = {};
     int m_LISTENTrigMode_ = {}; //Trigger mode of server, LT : 0, ET : 1;
@@ -112,7 +115,7 @@ public:
     }
 
     void createThreadPool() {
-        m_thread_pool_ = new Threadpool<http_conn>(8, 10000, m_actor_model_);
+        m_thread_pool_ = new Threadpool<http_conn>(THREAD_NUM, MAX_FD, m_actor_model_);
     }
 
     void createLog() {
@@ -136,7 +139,7 @@ public:
 
         int ret = bind(m_server_fd_, (sockaddr*)&addr, sizeof(addr));
         assert(ret >= 0);
-        ret = listen(m_server_fd_, 8192);
+        ret = listen(m_server_fd_, 2048);
         assert(ret >= 0);
         //
 
@@ -287,11 +290,11 @@ public:
 
 
     void loop() {
-        std::vector<epoll_event> events(m_max_events_num_);
+        std::vector<epoll_event> events(MAX_EVENT_NUM);
         bool timeout = false;
         bool stop_server = false;
         while (!stop_server) {
-            int n = epoll_wait(m_epoll_fd_, events.data(), m_max_events_num_, -1);
+            int n = epoll_wait(m_epoll_fd_, events.data(), MAX_EVENT_NUM, -1);
             if (n < 0 && errno != EINTR) {
                 LOG_ERROR("%s", "epoll_wait error");
                 break;
