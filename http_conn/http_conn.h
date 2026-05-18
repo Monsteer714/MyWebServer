@@ -23,6 +23,23 @@
 #include "../log/log.h"
 #include "../timer/timer_lst.h"
 
+#ifdef __linux__
+#include <sys/sendfile.h>
+#endif
+
+// 平台无关包装，消除 IDE 对 sendfile 签名的误报
+inline ssize_t sendfile_wrap(int out_fd, int in_fd, off_t* offset, ssize_t count) {
+#ifdef __linux__
+    return sendfile(out_fd, in_fd, offset, count);
+#else
+    off_t len = count;
+    int ret = sendfile(in_fd, out_fd, *offset, &len, nullptr, 0);
+    if (ret == 0) { *offset += len; return len; }
+    return -1;
+#endif
+}
+
+
 inline const char* ok_200_title = "OK";
 inline const char* error_400_title = "Bad Request";
 inline const char* error_400_form = "Your request has bad syntax or is inherently impossible to staisfy.\n";
@@ -63,9 +80,14 @@ public:
         LINE_OPEN,
     };
 
+    enum SEND_STATE {
+        SEND_HEAD = 0,
+        SEND_FILE,
+    };
+
 private:
     int m_client_fd_ = {};
-    int m_TRIGMode_ = {};// LT : 0, ET : 1;
+    int m_TRIGMode_ = {}; // LT : 0, ET : 1;
     bool m_linger_ = {};
     ssize_t m_read_idx_ = {}; //read_buffer下一位填充的起始序号，也即read_buffer可读数据最后一位的下一位
     ssize_t m_write_idx_ = {};
@@ -83,12 +105,14 @@ private:
     char m_read_buffer_[READ_BUFFER_SIZE] = {};
     char m_write_buffer_[WRITE_BUFFER_SIZE] = {};
 
-    //mmap
+    //send file
+    SEND_STATE m_send_state_ = {};
+    int m_file_fd_ = {};
     char* m_file_ = {};
     char* m_file_address = {};
     struct stat m_file_stat_ = {};
-    struct iovec m_iovec_[2] = {};
-    int m_iovec_count_ = {};
+    ssize_t m_file_bytes_left_ = {};
+    off_t m_file_offset_ = {};
 
     void setNonBlocking(int fd) {
         int flags = fcntl(fd, F_GETFL);
@@ -101,7 +125,8 @@ private:
 
         if (m_TRIGMode_ == 0) {
             event.events = EPOLLIN | EPOLLRDHUP;
-        } else {
+        }
+        else {
             event.events = EPOLLIN | EPOLLET | EPOLLRDHUP;
         }
 
@@ -118,7 +143,7 @@ private:
     }
 
     // Close the client fd if it's valid and mark it as closed.
-    void close_fd(int &fd) {
+    void close_fd(int& fd) {
         if (fd >= 0) {
             ::close(fd);
             fd = -1;
@@ -131,7 +156,8 @@ private:
 
         if (m_TRIGMode_ == 0) {
             event.events = ev | EPOLLONESHOT | EPOLLRDHUP;
-        } else {
+        }
+        else {
             event.events = ev | EPOLLET | EPOLLONESHOT | EPOLLRDHUP;
         }
 
@@ -176,19 +202,17 @@ public:
         m_content_length_ = 0;
         m_bytes_to_send_ = 0;
         m_bytes_have_sent_ = 0;
+        m_file_fd_ = -1;
+        m_file_bytes_left_ = 0;
+        m_file_offset_ = {};
         m_host_.clear();
         m_path.clear();
         m_version.clear();
         m_method_ = GET;
         m_check_state_ = CHECK_REQUEST;
+        m_send_state_ = SEND_HEAD;
         m_linger_ = false;
-        m_iovec_count_ = 0;
-        m_iovec_[0] = {};
-        m_iovec_[1] = {};
         m_state_ = 0;
-
-        memset(m_read_buffer_, '\0', sizeof(m_read_buffer_));
-        memset(m_write_buffer_, '\0', sizeof(m_write_buffer_));
     }
 
     bool read_once() {
@@ -202,7 +226,8 @@ public:
             }
             m_read_idx_ += n;
             return true;
-        } else { //ET
+        }
+        else { //ET
             while (true) {
                 ssize_t n = ::read(m_client_fd_, m_read_buffer_ + m_read_idx_, READ_BUFFER_SIZE - m_read_idx_);
                 if (n < 0) {
@@ -257,17 +282,13 @@ public:
     HTTP_CODE do_request() {
         m_file_ = m_index_path_;
         stat(m_file_, &m_file_stat_);
-        int fd = open(m_file_, O_RDONLY);
-        m_file_address = (char*)mmap(0, m_file_stat_.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
-        close(fd);
-        return FILE_REQUEST;
-    }
-
-    void unmap() {
-        if (m_file_address) {
-            munmap(m_file_address, m_file_stat_.st_size);
-            m_file_address = 0;
+        m_file_fd_ = open(m_file_, O_RDONLY);
+        if (m_file_fd_ < 0) {
+            return BAD_REQUEST;
         }
+        m_file_offset_ = 0;
+        m_file_bytes_left_ = m_file_stat_.st_size;
+        return FILE_REQUEST;
     }
 
     HTTP_CODE process_read() {
@@ -386,16 +407,16 @@ public:
         return add_response("%s %d %s\r\n", "HTTP/1.1", status, title);
     }
 
-    bool add_headers(const int &content_length) {
+    bool add_headers(const int& content_length) {
         return add_content_length(content_length) && add_content_type()
-                && add_connection() && add_blank_line();
+            && add_connection() && add_blank_line();
     }
 
-    bool add_content_type(){
+    bool add_content_type() {
         return add_response("Content-Type:%s\r\n", "text/html");
     }
 
-    bool add_content_length(const int &content_length) {
+    bool add_content_length(const int& content_length) {
         return add_response("Content-Length:%d\r\n", content_length);
     }
 
@@ -431,14 +452,10 @@ public:
             add_status_line(200, ok_200_title);
             if (m_file_stat_.st_size != 0) {
                 add_headers(m_file_stat_.st_size);
-                m_iovec_[0].iov_base = m_write_buffer_;
-                m_iovec_[0].iov_len = m_write_idx_;
-                m_iovec_[1].iov_base = m_file_address;
-                m_iovec_[1].iov_len = m_file_stat_.st_size;
-                m_iovec_count_ = 2;
                 m_bytes_to_send_ = m_write_idx_ + m_file_stat_.st_size;
                 return true;
-            } else {
+            }
+            else {
                 const char* body = "<html><body></body></html>";
                 add_headers(std::strlen(body));
                 if (!add_content(body)) {
@@ -450,46 +467,58 @@ public:
             return false;
             break;
         }
-        m_iovec_[0].iov_base = m_write_buffer_;
-        m_iovec_[0].iov_len = m_write_idx_;
-        m_iovec_count_ = 1;
         m_bytes_to_send_ = m_write_idx_;
         return true;
     }
 
     bool write() {
-        int temp = 0;
+        ssize_t temp = 0;
         while (true) {
-            temp = writev(m_client_fd_, m_iovec_, m_iovec_count_);
+            if (m_send_state_ == SEND_HEAD) {
+                temp = ::write(m_client_fd_, m_write_buffer_ + m_bytes_have_sent_, m_write_idx_ - m_bytes_have_sent_);
 
-            if (temp == -1) {
-                if (errno == EAGAIN) {
-                    modfd(m_epollfd_, m_client_fd_, EPOLLOUT);
-                    return true;
+                if (temp == -1) {
+                    if (errno == EAGAIN) {
+                        modfd(m_epollfd_, m_client_fd_, EPOLLOUT);
+                        return true;
+                    }
+                    close(m_client_fd_);
+                    m_client_fd_ = -1;
+                    return false;
                 }
-                unmap();
-                return false;
+
+                m_bytes_have_sent_ += temp;
+                m_bytes_to_send_ -= temp;
+
+                if (m_bytes_have_sent_ >= m_write_idx_) {
+                    m_send_state_ = SEND_FILE;
+                }
             }
+            else if (m_send_state_ == SEND_FILE && m_file_bytes_left_ > 0) {
+                temp = sendfile_wrap(m_client_fd_, m_file_fd_, &m_file_offset_, m_file_bytes_left_);
 
-            m_bytes_to_send_ -= temp;
-            m_bytes_have_sent_ += temp;
+                if (temp == -1) {
+                    if (errno == EAGAIN) {
+                        modfd(m_epollfd_, m_client_fd_, EPOLLOUT);
+                        return true;
+                    }
+                    close(m_client_fd_);
+                    m_client_fd_ = -1;
+                    return false;
+                }
 
-            if (m_bytes_have_sent_ >= m_write_idx_) {
-                m_iovec_[0].iov_len = 0;
-                m_iovec_[1].iov_base = m_file_address + (m_bytes_have_sent_ - m_write_idx_);
-                m_iovec_[1].iov_len = m_bytes_to_send_;
-            } else {
-                m_iovec_[0].iov_base = m_write_buffer_ + m_bytes_have_sent_;
-                m_iovec_[0].iov_len = m_write_idx_ - m_bytes_have_sent_;
+                m_bytes_to_send_ -= temp;
             }
 
             if (m_bytes_to_send_ <= 0) {
-                unmap();
+                close(m_file_fd_);
+                m_file_fd_ = -1;
                 modfd(m_epollfd_, m_client_fd_, EPOLLIN);
                 if (m_linger_) {
                     init();
                     return true;
-                } else {
+                }
+                else {
                     return false;
                 }
             }

@@ -139,7 +139,7 @@ public:
 
         int ret = bind(m_server_fd_, (sockaddr*)&addr, sizeof(addr));
         assert(ret >= 0);
-        ret = listen(m_server_fd_, 2048);
+        ret = listen(m_server_fd_, 65535);
         assert(ret >= 0);
         //
 

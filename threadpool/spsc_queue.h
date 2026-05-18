@@ -42,23 +42,6 @@ public:
         return true;
     }
 
-    bool pop(T& out) {
-        auto h = head_.load(std::memory_order_acquire);
-        auto t = tail_.load(std::memory_order_relaxed);
-
-        if (h == t) {
-            return false;
-        }
-
-        out = array_[t];
-        array_[t] = T{};
-
-        auto next_t = (t + 1) % capacity_;
-        tail_.store(next_t, std::memory_order_release);
-
-        return true;
-    }
-
     bool pop() {
         auto h = head_.load(std::memory_order_acquire);
         auto t = tail_.load(std::memory_order_relaxed);
