@@ -38,6 +38,7 @@ endif()
 add_executable(server main.cpp
         config.cpp
         log/log.cpp
+        log/async_log.cpp
         timer/timer_lst.cpp
         timer/timer_wheel.cpp
         util/util.cpp

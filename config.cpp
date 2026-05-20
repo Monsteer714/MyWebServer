@@ -10,8 +10,8 @@ Config::Config() {
     //设置监听端口
     Config::PORT = 8888;
 
-    //日志写入方式，0:异步；1:同步；
-    Config::LOG_WRITE = 0;
+    //日志模型，0: 阻塞队列，1:双缓冲；
+    Config::LOG_MODEL = 0;
 
     //组合触发方式，0:服务端LT，客户端LT；1:服务端ET，客户端LT；2:服务端LT，客户端ET；3:服务端ET，客户端ET；
     Config::TRIG_MODE = 0;
@@ -36,7 +36,7 @@ void Config::parse_args(int argc, char* argv[]) {
             break;
         }
         case 'l': {
-            Config::LOG_WRITE = std::atoi(optarg);
+            Config::LOG_MODEL = atoi(optarg);
             break;
         }
         case 'm': {

@@ -6,10 +6,12 @@
 #define MYWEBSERVER_ASYNC_LOG_H
 
 #include <string>
-#include <cstdio>
+#include <atomic>
+#include <memory>
+#include <vector>
 #include "../locker/locker.h"
-#include "block_queue.h"
 #include "large_log_buffer.h"
+
 
 class Async_Log {
 public:
@@ -39,9 +41,10 @@ private:
     int m_close_log_ = {};
     int m_today_ = {};
     int m_max_buf_size_ = {};
+
+    pthread_t m_thread_ = {};
     locker m_mutex_ = {};
     cond m_cond_ = {};
-    char* m_log_buffer_;
     FILE* m_fp_;
 
 private:
@@ -51,9 +54,9 @@ private:
     void async_write_in();
 };
 
-#define LOG_DEBUG(format, ...) Async_Log::getInstance()->write_log(0, format, ##__VA_ARGS__); Async_Log::getInstance()->flush()
-#define LOG_INFO(format, ...)  Async_Log::getInstance()->write_log(1, format, ##__VA_ARGS__); Async_Log::getInstance()->flush()
-#define LOG_WARN(format, ...)  Async_Log::getInstance()->write_log(2, format, ##__VA_ARGS__); Async_Log::getInstance()->flush()
-#define LOG_ERROR(format, ...) Async_Log::getInstance()->write_log(3, format, ##__VA_ARGS__); Async_Log::getInstance()->flush()
+#define LOG_DEBUG(format, ...) Async_Log::getInstance()->write_log(0, format, ##__VA_ARGS__);
+#define LOG_INFO(format, ...)  Async_Log::getInstance()->write_log(1, format, ##__VA_ARGS__);
+#define LOG_WARN(format, ...)  Async_Log::getInstance()->write_log(2, format, ##__VA_ARGS__);
+#define LOG_ERROR(format, ...) Async_Log::getInstance()->write_log(3, format, ##__VA_ARGS__);
 
 #endif //MYWEBSERVER_ASYNC_LOG_H

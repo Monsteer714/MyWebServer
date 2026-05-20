@@ -1,25 +1,27 @@
-#include "async_log.h"
 //
 // Created by Hanhong Wong on 2026/5/19.
 //
+#include "async_log.h"
+#include <cstdarg>
+#include <cstdio>
 Async_Log::Async_Log() {
-    m_log_buffer_ = {};
     m_max_buf_size_ = 1024;
     m_running_ = true;
-    memset(m_log_buffer_, '\0', m_max_buf_size_);
+    curBuffer_ = std::make_unique<Buffer>();
+    nextBuffer_ = std::make_unique<Buffer>();
 }
 
 Async_Log::~Async_Log() {
+    m_running_ = false;
+    m_cond_.signal();
+    pthread_join(m_thread_, nullptr);
     if (m_fp_ != nullptr) {
         fclose(m_fp_);
     }
-    m_running_ = false;
-    delete[] m_log_buffer_;
 }
 
 bool Async_Log::init(const char* m_log_name, int m_close_log) {
-    pthread_t tid;
-    pthread_create(&tid, nullptr, async_write_log, nullptr);
+    pthread_create(&m_thread_, nullptr, async_write_log, nullptr);
 
     m_close_log_ = m_close_log;
 
@@ -46,6 +48,7 @@ bool Async_Log::init(const char* m_log_name, int m_close_log) {
     m_fp_ = fopen(m_log_fullname, "a");
     if (m_fp_ == nullptr) {
         return false;
+        perror("fopen");
     }
     return true;
 }
@@ -76,21 +79,22 @@ void Async_Log::write_log(int level, const char* format, ...) {
         break;
     }
 
-    m_mutex_.lock();
 
     va_list valist;
     va_start(valist, format);
 
-    int n = snprintf(m_log_buffer_, m_max_buf_size_, "%d-%02d-%02d %02d:%02d:%02d.%06ld %s ", my_tm.tm_year + 1900, my_tm.tm_mon + 1,
+    char buffer[1024];
+    int n = snprintf(buffer, m_max_buf_size_, "%d-%02d-%02d %02d:%02d:%02d.%06ld %s ", my_tm.tm_year + 1900, my_tm.tm_mon + 1,
                      my_tm.tm_mday, my_tm.tm_hour, my_tm.tm_min, my_tm.tm_sec, t % 1000000, s);
-    int m = vsnprintf(m_log_buffer_ + n, m_max_buf_size_ - n - 1, format, valist);
-    m_log_buffer_[n + m] = '\n';
-    m_log_buffer_[n + m + 1] = '\0';
+    int m = vsnprintf(buffer + n, m_max_buf_size_ - n - 1, format, valist);
+    buffer[n + m] = '\n';
+    buffer[n + m + 1] = '\0';
 
-    int len = n + m + 2;
+    int len = n + m + 1;
 
+    m_mutex_.lock();
     if (curBuffer_->avail() > len) {
-        curBuffer_->append(m_log_buffer_, len);
+        curBuffer_->append(buffer, len);
     } else {
         buffers_.emplace_back(std::move(curBuffer_));
 
@@ -100,7 +104,7 @@ void Async_Log::write_log(int level, const char* format, ...) {
             curBuffer_ = std::move(std::make_unique<Buffer>());
         }
 
-        curBuffer_->append(m_log_buffer_, len);
+        curBuffer_->append(buffer, len);
         m_cond_.signal();
     }
 
@@ -132,20 +136,20 @@ void Async_Log::async_write_in() {
 
 
         for (const auto& buffer : buffersToWrite) {
-            fputs(buffer->data(), m_fp_);
+            fwrite(buffer->data(), 1, buffer->size(), m_fp_);
         }
 
         if (buffersToWrite.size() > 2) {
             buffersToWrite.resize(2);
         }
 
-        if (newBuffer1 == nullptr) {
+        if (newBuffer1 == nullptr && !buffersToWrite.empty()) {
             newBuffer1 = std::move(buffersToWrite.back());
             buffersToWrite.pop_back();
             newBuffer1->reset();
         }
 
-        if (newBuffer2 == nullptr) {
+        if (newBuffer2 == nullptr && !buffersToWrite.empty()) {
             newBuffer2 = std::move(buffersToWrite.back());
             buffersToWrite.pop_back();
             newBuffer2->reset();

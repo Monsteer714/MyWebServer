@@ -58,9 +58,9 @@ private:
     }
 };
 
-#define LOG_DEBUG(format, ...) Log::getInstance()->write_log(0, format, ##__VA_ARGS__); Log::getInstance()->flush()
-#define LOG_INFO(format, ...)  Log::getInstance()->write_log(1, format, ##__VA_ARGS__); Log::getInstance()->flush()
-#define LOG_WARN(format, ...)  Log::getInstance()->write_log(2, format, ##__VA_ARGS__); Log::getInstance()->flush()
-#define LOG_ERROR(format, ...) Log::getInstance()->write_log(3, format, ##__VA_ARGS__); Log::getInstance()->flush()
+//#define LOG_DEBUG(format, ...) Log::getInstance()->write_log(0, format, ##__VA_ARGS__); Log::getInstance()->flush()
+//#define LOG_INFO(format, ...)  Log::getInstance()->write_log(1, format, ##__VA_ARGS__); Log::getInstance()->flush()
+//#define LOG_WARN(format, ...)  Log::getInstance()->write_log(2, format, ##__VA_ARGS__); Log::getInstance()->flush()
+//#define LOG_ERROR(format, ...) Log::getInstance()->write_log(3, format, ##__VA_ARGS__); Log::getInstance()->flush()
 
 #endif //MYWEBSERVER_LOG_H

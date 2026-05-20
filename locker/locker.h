@@ -53,11 +53,8 @@ public:
 
     bool wait_for_time(pthread_mutex_t* mutex, int seconds) {
         struct timespec ts;
-
         clock_gettime(CLOCK_REALTIME, &ts);
-
         ts.tv_sec += seconds;
-        ts.tv_nsec = ts.tv_sec * 1000000000 + ts.tv_nsec;
         return pthread_cond_timedwait(&cond_, mutex, &ts) == 0;
     }
 

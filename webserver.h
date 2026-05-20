@@ -14,6 +14,7 @@
 #include <sys/epoll.h>
 
 #include "http_conn/http_conn.h"
+#include "log/async_log.h"
 #include "log/log.h"
 #include "threadpool/threadpool.h"
 #include "timer/timer_policy.h"
@@ -53,7 +54,7 @@ private:
 
     //log
     int m_close_log_ = {};
-
+    int m_log_model_ = {};
 
     void setNonBlocking(int fd) {
         int flags = fcntl(fd, F_GETFL, 0);
@@ -88,9 +89,10 @@ public:
             close(m_server_fd_);
     }
 
-    void init(int m_TRIGMode, int m_actor_model, int m_close_log, int m_timer_model) {
+    void init(int m_TRIGMode, int m_actor_model, int m_log_model, int m_close_log, int m_timer_model) {
         m_TRIGMode_ = m_TRIGMode;
         m_actor_model_ = m_actor_model;
+        m_log_model_ = m_log_model;
         m_close_log_ = m_close_log;
         m_timer_model_ = m_timer_model;
     }
@@ -119,7 +121,12 @@ public:
     }
 
     void createLog() {
-        Log::getInstance()->init("./ServerLog", m_close_log_, 2048, 5000000, 800);
+        if (m_log_model_ == 0) {
+            Log::getInstance()->init("./ServerLog", m_close_log_, 2048, 5000000, 800);
+        }
+        if (m_log_model_ == 1) {
+            Async_Log::getInstance()->init("./ServerLog", m_close_log_);
+        }
     }
 
     void start() {
@@ -174,7 +181,7 @@ public:
         m_util_.addsig(SIGTERM, Util::sig_handler, false);
         alarm(TIME_SLOT);
 
-        Log::LOG_INFO("Web server started on port %d", 8888);
+        Async_Log::LOG_INFO("Web server started on port %d", 8888);
     }
 
     void adjustTimer(int fd) {

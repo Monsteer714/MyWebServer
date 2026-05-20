@@ -26,6 +26,7 @@
 #include <ctime>
 
 #include "../log/log.h"
+#include "../log/async_log.h"
 
 // ========== Util 成员定义 ==========
 

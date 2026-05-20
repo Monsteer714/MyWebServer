@@ -153,6 +153,30 @@ config.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/server.dir/build.make CMakeFiles/server.dir/config.cpp.s
 .PHONY : config.cpp.s
 
+log/async_log.o: log/async_log.cpp.o
+.PHONY : log/async_log.o
+
+# target to build an object file
+log/async_log.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/server.dir/build.make CMakeFiles/server.dir/log/async_log.cpp.o
+.PHONY : log/async_log.cpp.o
+
+log/async_log.i: log/async_log.cpp.i
+.PHONY : log/async_log.i
+
+# target to preprocess a source file
+log/async_log.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/server.dir/build.make CMakeFiles/server.dir/log/async_log.cpp.i
+.PHONY : log/async_log.cpp.i
+
+log/async_log.s: log/async_log.cpp.s
+.PHONY : log/async_log.s
+
+# target to generate assembly for a file
+log/async_log.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/server.dir/build.make CMakeFiles/server.dir/log/async_log.cpp.s
+.PHONY : log/async_log.cpp.s
+
 log/log.o: log/log.cpp.o
 .PHONY : log/log.o
 
@@ -285,6 +309,9 @@ help:
 	@echo "... config.o"
 	@echo "... config.i"
 	@echo "... config.s"
+	@echo "... log/async_log.o"
+	@echo "... log/async_log.i"
+	@echo "... log/async_log.s"
 	@echo "... log/log.o"
 	@echo "... log/log.i"
 	@echo "... log/log.s"

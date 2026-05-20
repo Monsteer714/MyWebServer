@@ -28,6 +28,7 @@
 
 #include <time.h>
 #include "../log/log.h"
+#include "../log/async_log.h"
 #include "timer_policy.h"
 
 

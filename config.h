@@ -15,7 +15,7 @@ public:
 
     int PORT;
 
-    int LOG_WRITE;
+    int LOG_MODEL;
 
     int LOG_CLOSE;
 
