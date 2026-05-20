@@ -90,8 +90,6 @@ void Log::write_log(int level, const char* format, ...) {
         break;
     }
 
-    std::string log_str;
-
     m_mutex_.lock();
 
     va_list valist;
@@ -102,15 +100,14 @@ void Log::write_log(int level, const char* format, ...) {
     int m = vsnprintf(m_log_buffer_ + n, m_max_buf_size_ - n - 1, format, valist);
     m_log_buffer_[n + m] = '\n';
     m_log_buffer_[n + m + 1] = '\0';
-    log_str = m_log_buffer_;
 
     m_mutex_.unlock();
 
     if (m_is_async_ && !m_queue_->is_full()) {
-        m_queue_->push(log_str);
+        m_queue_->push(m_log_buffer_);
     } else {
         m_mutex_.lock();
-        fputs(log_str.c_str(), m_fp_);
+        fputs(m_log_buffer_, m_fp_);
         m_mutex_.unlock();
     }
 
