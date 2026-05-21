@@ -48,7 +48,6 @@ bool Async_Log::init(const char* m_log_name, int m_close_log) {
     m_fp_ = fopen(m_log_fullname, "a");
     if (m_fp_ == nullptr) {
         return false;
-        perror("fopen");
     }
     return true;
 }
