@@ -1,1 +1,0 @@
-/usr/bin/c++  -pthread -g -arch x86_64 -Wl,-search_paths_first -Wl,-headerpad_max_install_names CMakeFiles/server.dir/main.cpp.o CMakeFiles/server.dir/config.cpp.o CMakeFiles/server.dir/log/log.cpp.o CMakeFiles/server.dir/timer/timer_lst.cpp.o -o server  /usr/local/lib/libepoll-shim.dylib

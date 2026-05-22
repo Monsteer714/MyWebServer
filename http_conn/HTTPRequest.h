@@ -1,0 +1,8 @@
+//
+// Created by Hanhong Wong on 2026/5/22.
+//
+
+#ifndef MYWEBSERVER_HTTPREQUEST_H
+#define MYWEBSERVER_HTTPREQUEST_H
+
+#endif //MYWEBSERVER_HTTPREQUEST_H
