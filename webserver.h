@@ -155,7 +155,7 @@ public:
         //创建内核epoll事件表
         m_epoll_fd_ = epoll_create1(0);
         assert(m_epoll_fd_ >= 0);
-        m_util_.addfd(m_epoll_fd_, m_server_fd_, false, m_LISTENTrigMode_);
+        m_util_.addfd(m_epoll_fd_, m_server_fd_, false);
 
         http_conn::m_epollfd_ = m_epoll_fd_;
 
@@ -175,7 +175,7 @@ public:
             m_util_.init_timer(std::make_unique<timer_wheel>());
         }
         setNonBlocking(m_pipe_fd_[1]);
-        m_util_.addfd(m_epoll_fd_, m_pipe_fd_[0], false, 0);
+        m_util_.addfd(m_epoll_fd_, m_pipe_fd_[0], false);
         m_util_.addsig(SIGPIPE, SIG_IGN, false);
         m_util_.addsig(SIGALRM, Util::sig_handler, false);
         m_util_.addsig(SIGTERM, Util::sig_handler, false);

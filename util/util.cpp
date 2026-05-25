@@ -58,21 +58,32 @@ void Util::setnonblocking(int fd) {
     fcntl(fd, F_SETFL, flag | O_NONBLOCK);
 }
 
-void Util::addfd(int epollfd, int fd, bool one_shot, int trigmode) {
+void Util::addfd(int epollfd, int fd, bool one_shot) {
     epoll_event event;
     event.data.fd = fd;
 
-    if (trigmode == 0) {
-        event.events = EPOLLIN | EPOLLRDHUP;
-    } else {
-        event.events = EPOLLIN | EPOLLET | EPOLLRDHUP;
-    }
+    event.events = EPOLLIN | EPOLLET | EPOLLRDHUP;
 
     if (one_shot) {
         event.events |= EPOLLONESHOT;
     }
 
     epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, &event);
+}
+
+bool modfd(int epfd, int fd, int ev) {
+    epoll_event event = {};
+    event.data.fd = fd;
+
+    event.events = ev | EPOLLET | EPOLLONESHOT | EPOLLRDHUP;
+
+    epoll_ctl(epfd, EPOLL_CTL_MOD, fd, &event);
+    return true;
+}
+
+bool delfd(int epfd, int fd) {
+    epoll_ctl(epfd, EPOLL_CTL_DEL, fd, 0);
+    return true;
 }
 
 void Util::sig_handler(int sig) {

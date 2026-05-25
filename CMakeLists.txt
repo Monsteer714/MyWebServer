@@ -3,7 +3,7 @@ project(MyWebServer)
 
 set(CMAKE_CXX_STANDARD 20)
 if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE Release)
+    set(CMAKE_BUILD_TYPE Debug)
 endif()
 
 find_package(Threads REQUIRED)
@@ -44,5 +44,8 @@ add_executable(server main.cpp
         util/util.cpp
         threadpool/threadpool.h
         webserver.h)
+
+add_executable(http_test http_conn/HttpTest.cpp)
+
 target_link_libraries(server Threads::Threads ${EPOLL_SHIM_LIB})
 

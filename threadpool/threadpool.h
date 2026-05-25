@@ -43,18 +43,9 @@ private:
                 if (task->m_state_ == 0) { //read
                     if (task->read_once()) {
                         task->process();
-                        task->m_op_finish_flag_ = true;
-                    } else {
-                        task->m_op_finish_flag_ = true;
-                        task->m_error_flag_ = true;
                     }
                 } else { //write
-                    if (task->write()) {
-                        task->m_op_finish_flag_ = true;
-                    } else {
-                        task->m_op_finish_flag_ = true;
-                        task->m_error_flag_ = true;
-                    }
+                    task->write();
                 }
             } else { // Proactor
                 task->process();
