@@ -28,7 +28,7 @@ public:
     ssize_t m_check_idx_ = {};
     ssize_t m_read_idx_ = {};
     ssize_t m_start_line_ = {};
-
+    ssize_t m_remain_content_length_ = {};
 public:
     char* get_line(char* buffer) {
         return buffer + m_start_line_;
@@ -54,6 +54,9 @@ public:
                     return LINE_STATE::LINE_OK;
                 }
                 return LINE_STATE::LINE_BAD;
+            }
+            if (m_check_state_ == CHECK_STATE::CHECK_CONTENT) {
+                m_remain_content_length_--;
             }
         }
         return LINE_STATE::LINE_OPEN;
@@ -84,6 +87,7 @@ public:
     StatusCode parse_header_line(char* text) {
         if (text[0] == '\r' && text[1] == '\n') {
             if (m_request_.get_content_length() > 0) {
+                m_remain_content_length_ = m_request_.get_content_length();
                 m_check_state_ = CHECK_STATE::CHECK_CONTENT;
                 return StatusCode::UNKNOWN;
             }
@@ -104,7 +108,7 @@ public:
     }
 
     StatusCode parse_content_line(char* text) {
-        if (m_read_idx_ >= m_request_.get_content_length() + m_check_idx_) {
+        if (m_read_idx_ >= m_remain_content_length_ + m_check_idx_) {
             m_request_.set_content(text, text + m_request_.get_content_length());
             return StatusCode::SUCCESS;
         }
@@ -115,7 +119,8 @@ public:
         auto line_state = LINE_STATE::LINE_OK;
         auto ret = StatusCode::UNKNOWN;
         char* text = {};
-        while ((line_state = parse_line(buffer)) == LINE_STATE::LINE_OK) {
+        while (m_check_state_ == CHECK_STATE::CHECK_CONTENT && line_state == LINE_STATE::LINE_OK ||
+            (line_state = parse_line(buffer)) == LINE_STATE::LINE_OK) {
             text = get_line(buffer);
             m_start_line_ = m_check_idx_;
             switch (m_check_state_) {

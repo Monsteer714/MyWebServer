@@ -92,7 +92,7 @@ public:
         return m_body_;
     }
 
-    void set_content_length(int l) {
+    void set_content_length(ssize_t l) {
         m_body_length_ = l;
     }
 

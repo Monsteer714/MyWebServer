@@ -57,11 +57,22 @@ void test_http_context_parse_headers() {
 }
 
 void test_http_context_parse_all() {
-    char* buffer = (char*)("POST /index.html HTTP/1.1\r\nContent-Type: text/html\r\nContent-Length: 10\r\n\r\ncontent");
+    char* buffer1 = (char*)("POST /index.html HTTP/1.1\r\nContent-Type: text/html\r\nContent-Length: 7\r\n\r\ncon");
+    char* buffer2 = (char*)("POST /index.html HTTP/1.1\r\nContent-Type: text/html\r\nContent-Length: 7\r\n\r\ncontent");
     HttpContext context;
 
-    context.m_read_idx_ = strlen(buffer);
-    context.parse_request(buffer);
+    context.m_read_idx_ += strlen(buffer1);
+    context.parse_request(buffer1);
+    context.m_read_idx_ = strlen(buffer2);
+    context.parse_request(buffer2);
+
+    assert(static_cast<int>(context.get_request().get_method()) == 1);
+    assert(context.get_request().get_path() == "/index.html");
+    assert(context.get_request().get_version() == "HTTP/1.1");
+    assert(context.get_request().get_headers("Content-Type") == std::string_view("text/html"));
+    assert(context.get_request().get_headers("Content-Length") == std::string_view("7"));
+    assert(context.get_request().get_content_length() == 7);
+    assert(context.get_request().get_content() == std::string_view("content"));
 }
 
 void test_all() {
