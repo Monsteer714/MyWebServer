@@ -87,6 +87,7 @@ public:
 
     void init(int m_client_fd) {
         m_client_fd_ = m_client_fd;
+        m_util_.setnonblocking(m_client_fd_);
         m_util_.addfd(m_epollfd_, m_client_fd_, true);
         init();
     }
@@ -129,9 +130,23 @@ public:
 
     StatusCode process_read() {
         auto ret = m_context_.parse_request(m_read_buffer_);
-        return ret == StatusCode::SUCCESS ? do_request() : ret;
+
+        //已收到完整请求，处理headers信息与content
+        if (ret == StatusCode::SUCCESS) {
+            // 根据 Connection 头和 HTTP 版本决定是否 keep-alive
+            auto conn_hdr = m_context_.m_request_.get_headers("Connection");
+            if (!conn_hdr.empty()) {
+                m_linger_ = (conn_hdr == "keep-alive");
+            } else {
+                // HTTP/1.1 默认 keep-alive；HTTP/1.0 默认 close
+                m_linger_ = (m_context_.m_request_.get_version() == "HTTP/1.1");
+            }
+            return do_request();
+        }
+        return ret;
     }
 
+    //处理返回文件路径
     StatusCode do_request() {
         m_file_path_ = m_context_.get_request().get_path();
 
@@ -157,11 +172,11 @@ public:
 
     bool process_write(StatusCode code) {
         // 仅 OK 响应的 body 来自文件，其余响应的 body 已含在缓冲区中
-        size_t file_size = (code == StatusCode::OK) ? m_file_stat_.st_size : 0;
+        ssize_t file_size = (code == StatusCode::OK) ? m_file_stat_.st_size : 0;
         if (!m_response_.build_response(code, file_size, m_linger_)) {
             return false;
         }
-        m_bytes_to_send_ = m_response_.write_idx() + file_size;
+        m_bytes_to_send_ = m_response_.get_write_idx() + file_size;
         m_bytes_have_sent_ = 0;
         m_send_state_ = SEND_STATE::SEND_HEAD;
         return true;
@@ -169,7 +184,7 @@ public:
 
     bool write() {
         ssize_t temp = 0;
-        size_t head_len = m_response_.write_idx();
+        size_t head_len = m_response_.get_write_idx();
 
         while (true) {
             if (m_send_state_ == SEND_STATE::SEND_HEAD) {
@@ -234,15 +249,6 @@ public:
         if (read_ret == StatusCode::UNKNOWN) {
             m_util_.modfd(m_epollfd_, m_client_fd_, EPOLLIN);
             return;
-        }
-
-        // 根据 Connection 头和 HTTP 版本决定是否 keep-alive
-        auto conn_hdr = m_context_.m_request_.get_headers("Connection");
-        if (!conn_hdr.empty()) {
-            m_linger_ = (conn_hdr == "keep-alive");
-        } else {
-            // HTTP/1.1 默认 keep-alive；HTTP/1.0 默认 close
-            m_linger_ = (m_context_.m_request_.get_version() == "HTTP/1.1");
         }
 
         auto write_ret = process_write(read_ret);

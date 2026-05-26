@@ -88,13 +88,7 @@ public:
         m_write_idx_ = 0;
     }
 
-    ssize_t write_idx() const { return m_write_idx_; }
 
-    /// 构建 HTTP 响应头到绑定的缓冲区中
-    /// @param code          状态码
-    /// @param content_length 响应体长度（用于 Content-Length 头；0 表示无文件体）
-    /// @param keep_alive    是否保持连接
-    /// @return true 成功写入，false 缓冲区不足
     bool build_response(StatusCode code, size_t content_length, bool keep_alive) {
         m_write_idx_ = 0;
 
@@ -128,6 +122,8 @@ public:
             return false;
         }
     }
+
+    ssize_t get_write_idx() const { return m_write_idx_; }
 
     // --- 用于逐步构建响应的底层接口（保留给未来扩展，如 WebSocket 握手） ---
     void reset() { m_write_idx_ = 0; }

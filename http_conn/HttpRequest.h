@@ -38,7 +38,7 @@ public:
         m_headers_ = {};
         m_body_ = {};
         m_body_length_ = {};
-        m_root_ = "../root";
+        m_root_ = "./root";
     }
 
     void set_method(const char* start, const char* end) {
