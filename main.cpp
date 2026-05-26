@@ -14,9 +14,7 @@ int main(int argc, char *argv[]) {
     config.parse_args(argc, argv);
 
     WebServer server;
-    server.init(config.TRIG_MODE, config.ACTOR_MODEL, config.LOG_MODEL, config.LOG_CLOSE, config.TIMER_MODEL);
-
-    server.setTrigMode();
+    server.init(config.ACTOR_MODEL, config.LOG_MODEL, config.LOG_CLOSE, config.TIMER_MODEL);
 
     server.createThreadPool();
 

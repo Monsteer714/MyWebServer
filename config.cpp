@@ -28,7 +28,7 @@ Config::Config() {
 
 void Config::parse_args(int argc, char* argv[]) {
     int opt;
-    const char* str = "p:l:m:o:s:t:c:a:t:";
+    const char* str = "p:l:o:s:t:c:a:t:";
     while ((opt = getopt(argc, argv, str)) != -1) {
         switch (opt) {
         case 'p': {
@@ -37,10 +37,6 @@ void Config::parse_args(int argc, char* argv[]) {
         }
         case 'l': {
             Config::LOG_MODEL = atoi(optarg);
-            break;
-        }
-        case 'm': {
-            Config::TRIG_MODE = atoi(optarg);
             break;
         }
         case 'a': {

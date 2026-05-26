@@ -42,13 +42,13 @@ inline const char* error_500_form = "There was an unusual problem serving the re
 class HttpResponse {
 private:
     char* m_buffer_ = nullptr;
-    ssize_t m_buffer_size_ = 0;
-    ssize_t m_write_idx_ = 0;
+    int m_buffer_size_ = 0;
+    int m_write_idx_ = 0;
 
     bool append(const char* format, ...) {
         va_list args;
         va_start(args, format);
-        ssize_t len = vsnprintf(m_buffer_ + m_write_idx_,
+        int len = vsnprintf(m_buffer_ + m_write_idx_,
                             m_buffer_size_ - m_write_idx_ - 1,
                             format, args);
         va_end(args);
@@ -78,7 +78,7 @@ public:
     HttpResponse() = default;
 
     // 绑定外部缓冲区（由 HttpConnect 拥有）
-    void bind(char* buffer, ssize_t size) {
+    void bind(char* buffer, int size) {
         m_buffer_ = buffer;
         m_buffer_size_ = size;
         m_write_idx_ = 0;
@@ -123,7 +123,7 @@ public:
         }
     }
 
-    ssize_t get_write_idx() const { return m_write_idx_; }
+    int get_write_idx() const { return m_write_idx_; }
 
     // --- 用于逐步构建响应的底层接口（保留给未来扩展，如 WebSocket 握手） ---
     void reset() { m_write_idx_ = 0; }

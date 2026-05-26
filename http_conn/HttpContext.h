@@ -25,10 +25,10 @@ public:
 
     HttpRequest m_request_ = {};
 
-    ssize_t m_check_idx_ = {};
-    ssize_t m_read_idx_ = {};
-    ssize_t m_start_line_ = {};
-    ssize_t m_remain_content_length_ = {};
+    int m_check_idx_ = {};
+    int m_read_idx_ = {};
+    int m_start_line_ = {};
+    int m_remain_content_length_ = {};
 public:
     void init() {
         m_check_state_ = CHECK_STATE::CHECK_REQUEST;
@@ -110,7 +110,7 @@ public:
         m_request_.set_headers(text, text + end);
 
         if (!m_request_.get_headers("Content-Length").empty()) {
-            ssize_t content_length = stoi(std::string(m_request_.get_headers("Content-Length")));
+            int content_length = stoi(std::string(m_request_.get_headers("Content-Length")));
             m_request_.set_content_length(content_length);
         }
         return StatusCode::UNKNOWN;

@@ -29,7 +29,7 @@
 #endif
 
 // 平台无关包装，消除 IDE 对 sendfile 签名的误报
-inline ssize_t sendfile_wrap(int out_fd, int in_fd, off_t* offset, ssize_t count) {
+inline int sendfile_wrap(int out_fd, int in_fd, off_t* offset, int count) {
 #ifdef __linux__
     return sendfile(out_fd, in_fd, offset, count);
 #else
@@ -48,8 +48,8 @@ public:
 private:
     int m_client_fd_ = {};
     bool m_linger_ = {};
-    ssize_t m_bytes_to_send_ = {};
-    ssize_t m_bytes_have_sent_ = {};
+    int m_bytes_to_send_ = {};
+    int m_bytes_have_sent_ = {};
     char m_read_buffer_[READ_BUFFER_SIZE] = {};
     char m_write_buffer_[WRITE_BUFFER_SIZE] = {};
 
@@ -58,7 +58,7 @@ private:
     int m_file_fd_ = {};
     std::string m_file_path_ = {};
     struct stat m_file_stat_ = {};
-    ssize_t m_file_bytes_left_ = {};
+    int m_file_bytes_left_ = {};
     off_t m_file_offset_ = {};
 
     //util
@@ -107,7 +107,7 @@ public:
     bool read() {
         auto& read_idx = m_context_.m_read_idx_;
         while (true) {
-            ssize_t n = ::read(m_client_fd_, m_read_buffer_ + read_idx,
+            int n = ::read(m_client_fd_, m_read_buffer_ + read_idx,
                                READ_BUFFER_SIZE - read_idx);
             if (n < 0) {
                 if (errno == EINTR) {
@@ -172,7 +172,7 @@ public:
 
     bool process_write(StatusCode code) {
         // 仅 OK 响应的 body 来自文件，其余响应的 body 已含在缓冲区中
-        ssize_t file_size = (code == StatusCode::OK) ? m_file_stat_.st_size : 0;
+        int file_size = (code == StatusCode::OK) ? m_file_stat_.st_size : 0;
         if (!m_response_.build_response(code, file_size, m_linger_)) {
             return false;
         }
@@ -183,7 +183,7 @@ public:
     }
 
     bool write() {
-        ssize_t temp = 0;
+        int temp = 0;
         size_t head_len = m_response_.get_write_idx();
 
         while (true) {

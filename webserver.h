@@ -42,9 +42,6 @@ private:
     int m_server_fd_ = {-1};
     int m_epoll_fd_ = {-1};
     int m_actor_model_ = {}; //Reactor : 0, Proactor : 1;
-    int m_TRIGMode_ = {};
-    int m_LISTENTrigMode_ = {}; //Trigger mode of server, LT : 0, ET : 1;
-    int m_CONNTrigMode_ = {}; //Trigger mode of client, LT : 0, ET : 1;
 
     //timer
     int m_pipe_fd_[2] = {};
@@ -55,12 +52,6 @@ private:
     //log
     int m_close_log_ = {};
     int m_log_model_ = {};
-
-    void setNonBlocking(int fd) {
-        int flags = fcntl(fd, F_GETFL, 0);
-        fcntl(fd, F_SETFL, flags | O_NONBLOCK);
-    }
-
     //初始化新的http连接，初始化该连接对应的定时器
     void createConn(int connfd) {
         m_user_[connfd].init(connfd);
@@ -89,31 +80,11 @@ public:
             close(m_server_fd_);
     }
 
-    void init(int m_TRIGMode, int m_actor_model, int m_log_model, int m_close_log, int m_timer_model) {
-        m_TRIGMode_ = m_TRIGMode;
+    void init(int m_actor_model, int m_log_model, int m_close_log, int m_timer_model) {
         m_actor_model_ = m_actor_model;
         m_log_model_ = m_log_model;
         m_close_log_ = m_close_log;
         m_timer_model_ = m_timer_model;
-    }
-
-    void setTrigMode() {
-        if (m_TRIGMode_ == 0) {
-            m_LISTENTrigMode_ = 0; // LT
-            m_CONNTrigMode_ = 0; // LT
-        }
-        if (m_TRIGMode_ == 1) {
-            m_LISTENTrigMode_ = 1; // ET
-            m_CONNTrigMode_ = 0; // LT
-        }
-        if (m_TRIGMode_ == 2) {
-            m_LISTENTrigMode_ = 0; // LT
-            m_CONNTrigMode_ = 1; // ET
-        }
-        if (m_TRIGMode_ == 3) {
-            m_LISTENTrigMode_ = 1; // ET
-            m_CONNTrigMode_ = 1; // ET
-        }
     }
 
     void createThreadPool() {
@@ -150,7 +121,7 @@ public:
         assert(ret >= 0);
         //
 
-        setNonBlocking(m_server_fd_);
+        m_util_.setnonblocking(m_server_fd_);
 
         //创建内核epoll事件表
         m_epoll_fd_ = epoll_create1(0);
@@ -174,7 +145,7 @@ public:
         if (m_timer_model_ == 1) {
             m_util_.init_timer(std::make_unique<timer_wheel>());
         }
-        setNonBlocking(m_pipe_fd_[1]);
+        m_util_.setnonblocking(m_pipe_fd_[1]);
         m_util_.addfd(m_epoll_fd_, m_pipe_fd_[0], false);
         m_util_.addsig(SIGPIPE, SIG_IGN, false);
         m_util_.addsig(SIGALRM, Util::sig_handler, false);
@@ -205,36 +176,24 @@ public:
     }
 
     bool dealwithclient() {
-        if (m_LISTENTrigMode_ == 0) { // LT
+        while (true) {
             int client_fd = accept(m_server_fd_, nullptr, nullptr);
             if (client_fd < 0) {
-                return false;
+                if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                    break;
+                }
+                if (errno == EINTR) {
+                    continue;
+                }
+                perror("accept");
+                break;
             }
+
             if (client_fd >= MAX_FD) {
                 return false;
             }
+
             createConn(client_fd);
-        }
-        else { //ET
-            while (true) {
-                int client_fd = accept(m_server_fd_, nullptr, nullptr);
-                if (client_fd < 0) {
-                    if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                        break;
-                    }
-                    if (errno == EINTR) {
-                        continue;
-                    }
-                    perror("accept");
-                    break;
-                }
-
-                if (client_fd >= MAX_FD) {
-                    return false;
-                }
-
-                createConn(client_fd);
-            }
         }
         return true;
     }

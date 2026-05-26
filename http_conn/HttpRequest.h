@@ -25,9 +25,11 @@ private:
 
     std::unordered_map<std::string_view, std::string_view> m_headers_ = {};
 
+    std::unordered_map<std::string, std::string> m_path_parameters = {};
+
     std::string_view m_body_ = {};
 
-    ssize_t m_body_length_ = {};
+    int m_body_length_ = {};
 public:
     HttpRequest() = default;
 
@@ -36,6 +38,7 @@ public:
         m_path_ = {};
         m_version_ = {};
         m_headers_ = {};
+        m_path_parameters = {};
         m_body_ = {};
         m_body_length_ = {};
         m_root_ = "./root";
@@ -96,6 +99,14 @@ public:
         }
     }
 
+    void set_path_parameters(const std::string& key, const std::string& value) {
+        m_path_parameters[key] = value;
+    }
+
+    std::string get_path_parameters(const std::string& key) {
+        return m_path_parameters[key];
+    }
+
     void set_content(const char* start, const char* end) {
         m_body_ = std::string_view(start, end);
     }
@@ -104,11 +115,11 @@ public:
         return m_body_;
     }
 
-    void set_content_length(ssize_t l) {
+    void set_content_length(int l) {
         m_body_length_ = l;
     }
 
-    ssize_t get_content_length() {
+    int get_content_length() {
         return m_body_length_;
     }
 };
