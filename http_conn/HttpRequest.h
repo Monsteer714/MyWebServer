@@ -17,6 +17,8 @@ class HttpRequest {
 private:
     Method m_method_ = {};
 
+    std::string m_root_ = {};
+
     std::string m_path_ = {};
 
     std::string_view m_version_ = {};
@@ -28,6 +30,16 @@ private:
     ssize_t m_body_length_ = {};
 public:
     HttpRequest() = default;
+
+    void init() {
+        m_method_ = Method::GET;
+        m_path_ = {};
+        m_version_ = {};
+        m_headers_ = {};
+        m_body_ = {};
+        m_body_length_ = {};
+        m_root_ = "../root";
+    }
 
     void set_method(const char* start, const char* end) {
         std::string_view s = std::string_view(start, end);
@@ -44,11 +56,11 @@ public:
     }
 
     void set_path(const char* start, const char* end) {
-        std::string_view path = std::string_view(start, end);
-        m_path_ = path;
+        std::string s = std::string(start, end);
+        m_path_ = m_root_ + s;
     }
 
-    std::string_view get_path() {
+    std::string& get_path() {
         return m_path_;
     }
 

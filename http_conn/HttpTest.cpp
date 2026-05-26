@@ -22,9 +22,13 @@ void test_http_request_path() {
 
     request.set_path(buffer, buffer + std::strlen(buffer));
 
-    assert(request.get_path() == buffer);
+    assert(request.get_path() == "/index.html");
 
-    std::cout << request.get_path() << std::endl;
+    request.init();
+
+    request.set_path(buffer, buffer + std::strlen(buffer));
+
+    assert(request.get_path() == "../root/index.html");
 }
 
 void test_http_request_version() {
@@ -59,7 +63,7 @@ void test_http_context_parse_headers() {
 void test_http_context_parse_all() {
     char* buffer1 = (char*)("POST /index.html HTTP/1.1\r\nContent-Type: text/html\r\nContent-Length: 7\r\n\r\ncon");
     char* buffer2 = (char*)("POST /index.html HTTP/1.1\r\nContent-Type: text/html\r\nContent-Length: 7\r\n\r\ncontent");
-    HttpContext context;
+    HttpContext context = {};
 
     context.m_read_idx_ += strlen(buffer1);
     context.parse_request(buffer1);

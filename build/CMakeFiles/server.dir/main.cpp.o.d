@@ -985,19 +985,22 @@ CMakeFiles/server.dir/main.cpp.o: \
   /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/_types/_filesec_t.h \
   /usr/local/include/libepoll-shim/sys/epoll.h \
   /usr/local/include/libepoll-shim/epoll-shim/detail/common.h \
-  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/http_conn/http_conn.h \
+  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/http_conn/HttpConnect.h \
   /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/strings.h \
-  /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/uio.h \
   /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/stat.h \
-  /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/mman.h \
   /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/http_conn/../log/log.h \
   /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/http_conn/../log/../locker/locker.h \
   /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/semaphore.h \
   /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/semaphore.h \
   /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/http_conn/../log/block_queue.h \
   /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/http_conn/../timer/timer_lst.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/mman.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/uio.h \
   /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/http_conn/../timer/../log/log.h \
   /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/http_conn/../timer/timer_policy.h \
+  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/http_conn/HttpRequest.h \
+  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/http_conn/HttpResponse.h \
+  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/http_conn/HttpContext.h \
   /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/log/async_log.h \
   /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/log/../locker/locker.h \
   /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/log/large_log_buffer.h \

@@ -13,7 +13,7 @@
 #include <vector>
 #include <sys/epoll.h>
 
-#include "http_conn/http_conn.h"
+#include "http_conn/HttpConnect.h"
 #include "log/async_log.h"
 #include "log/log.h"
 #include "threadpool/threadpool.h"
@@ -33,10 +33,10 @@ constexpr int MAX_EVENT_NUM = 10000;
 class WebServer {
 private:
     //http_conn
-    http_conn* m_user_ = {};
+    HttpConnect* m_user_ = {};
 
     //threadpool
-    Threadpool<http_conn>* m_thread_pool_ = {};
+    Threadpool<HttpConnect>* m_thread_pool_ = {};
 
     //epoll
     int m_server_fd_ = {-1};
@@ -63,7 +63,7 @@ private:
 
     //初始化新的http连接，初始化该连接对应的定时器
     void createConn(int connfd) {
-        m_user_[connfd].init(connfd, m_CONNTrigMode_);
+        m_user_[connfd].init(connfd);
         m_user_timer_[connfd].m_sock_fd_ = connfd;
         auto timer = m_util_.m_timer_->create_timer();
         timer->cb_func = cb_func;
@@ -75,7 +75,7 @@ private:
 
 public:
     WebServer() {
-        m_user_ = new http_conn[MAX_FD];
+        m_user_ = new HttpConnect[MAX_FD];
         m_user_timer_ = new client_data[MAX_FD];
     }
 
@@ -117,7 +117,7 @@ public:
     }
 
     void createThreadPool() {
-        m_thread_pool_ = new Threadpool<http_conn>(THREAD_NUM, MAX_FD, m_actor_model_);
+        m_thread_pool_ = new Threadpool<HttpConnect>(THREAD_NUM, MAX_FD, m_actor_model_);
     }
 
     void createLog() {
@@ -157,7 +157,7 @@ public:
         assert(m_epoll_fd_ >= 0);
         m_util_.addfd(m_epoll_fd_, m_server_fd_, false);
 
-        http_conn::m_epollfd_ = m_epoll_fd_;
+        HttpConnect::m_epollfd_ = m_epoll_fd_;
 
         //定时器相关
         ret = socketpair(AF_UNIX, SOCK_STREAM, 0, m_pipe_fd_);
@@ -246,7 +246,7 @@ public:
             m_thread_pool_->append_s(conn, 0);
         }
         else {
-            if (conn->read_once()) {
+            if (conn->read()) {
                 m_thread_pool_->append(conn);
                 adjustTimer(fd);
             }

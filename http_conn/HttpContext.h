@@ -30,6 +30,15 @@ public:
     ssize_t m_start_line_ = {};
     ssize_t m_remain_content_length_ = {};
 public:
+    void init() {
+        m_check_state_ = CHECK_STATE::CHECK_REQUEST;
+        m_read_idx_ = {};
+        m_check_idx_ = {};
+        m_start_line_ = {};
+        m_remain_content_length_ = {};
+        m_request_.init();
+    }
+
     char* get_line(char* buffer) {
         return buffer + m_start_line_;
     }
@@ -136,13 +145,13 @@ public:
                     return StatusCode::BAD_REQUEST;
                 }
                 if (ret == StatusCode::SUCCESS) {
-                    //return do_request();
+                    return StatusCode::SUCCESS;
                 }
                 break;
             case CHECK_STATE::CHECK_CONTENT:
                 ret = parse_content_line(text);
                 if (ret == StatusCode::SUCCESS) {
-                    //return do_request();
+                    return StatusCode::SUCCESS;
                 }
                 line_state = LINE_STATE::LINE_OPEN;
                 break;

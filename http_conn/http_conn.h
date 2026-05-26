@@ -215,7 +215,7 @@ public:
         m_state_ = 0;
     }
 
-    bool read_once() {
+    bool read() {
         if (m_read_idx_ >= READ_BUFFER_SIZE) {
             return false;
         }

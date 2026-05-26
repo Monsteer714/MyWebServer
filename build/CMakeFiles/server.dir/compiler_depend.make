@@ -2918,7 +2918,10 @@ CMakeFiles/server.dir/main.cpp.o: /Users/monsteer/Desktop/codes/Learning_Project
   /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/log/log.h \
   /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/timer/timer_lst.h \
   /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/timer/timer_policy.h \
-  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/http_conn/http_conn.h \
+  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/http_conn/HttpConnect.h \
+  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/http_conn/HttpContext.h \
+  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/http_conn/HttpRequest.h \
+  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/http_conn/HttpResponse.h \
   /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/locker/locker.h \
   /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/log/async_log.h \
   /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/log/large_log_buffer.h \
@@ -5774,7 +5777,13 @@ CMakeFiles/server.dir/util/util.cpp.o: /Users/monsteer/Desktop/codes/Learning_Pr
 
 /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/threadpool/threadpool.h:
 
-/Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/http_conn/http_conn.h:
+/Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/http_conn/HttpResponse.h:
+
+/Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/http_conn/HttpRequest.h:
+
+/Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/http_conn/HttpContext.h:
+
+/Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/http_conn/HttpConnect.h:
 
 /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/timer/timer_policy.h:
 

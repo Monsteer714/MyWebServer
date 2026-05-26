@@ -71,19 +71,17 @@ void Util::addfd(int epollfd, int fd, bool one_shot) {
     epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, &event);
 }
 
-bool modfd(int epfd, int fd, int ev) {
+void Util::modfd(int epollfd, int fd, int ev) {
     epoll_event event = {};
     event.data.fd = fd;
 
     event.events = ev | EPOLLET | EPOLLONESHOT | EPOLLRDHUP;
 
-    epoll_ctl(epfd, EPOLL_CTL_MOD, fd, &event);
-    return true;
+    epoll_ctl(epollfd, EPOLL_CTL_MOD, fd, &event);
 }
 
-bool delfd(int epfd, int fd) {
-    epoll_ctl(epfd, EPOLL_CTL_DEL, fd, 0);
-    return true;
+void Util::delfd(int epollfd, int fd) {
+    epoll_ctl(epollfd, EPOLL_CTL_DEL, fd, 0);
 }
 
 void Util::sig_handler(int sig) {
