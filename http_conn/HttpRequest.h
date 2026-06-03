@@ -63,6 +63,17 @@ public:
         return m_path_;
     }
 
+    // 获取纯 URL 路径（去掉 ./root 前缀），供 Router 匹配路由使用
+    // m_path_ 存储的是 "./root" + URL路径 (如 "./root/users/123")
+    // 此方法返回 URL 路径部分 (如 "/users/123")
+    std::string get_url_path() const {
+        if (m_path_.size() >= m_root_.size() &&
+            m_path_.compare(0, m_root_.size(), m_root_) == 0) {
+            return m_path_.substr(m_root_.size());
+        }
+        return m_path_;
+    }
+
     void set_version(const char* start, const char* end) {
         std::string_view version = std::string_view(start, end);
         m_version_ = version;

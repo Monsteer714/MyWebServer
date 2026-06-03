@@ -36,6 +36,9 @@ private:
     //http_conn
     HttpConnect* m_user_ = {};
 
+    // 路由表：所有连接共享，负责将 URL 分发给对应的 handler
+    Router m_router_ = {};
+
     //threadpool
     Threadpool<HttpConnect>* m_thread_pool_ = {};
 
@@ -103,11 +106,94 @@ public:
         }
     }
 
-    //void createTypes() {
-    //    Types::getInstance()->init();
-    //}
+    // =========================================================================
+    // 注册所有路由（静态 + 动态）
+    // 在 start() 中调用，确保服务器启动前路由表已就绪
+    // =========================================================================
+    void registerRoutes() {
+        // ---- 静态路由: GET /hello → 返回纯文本问候 ----
+        m_router_.addRoute(Method::GET, "/hello",
+            [](HttpRequest& req, HttpResponse& resp) {
+                const char* body = "<html><body><h1>Hello from Router!</h1>"
+                                   "<p>这是一条静态路由响应。</p></body></html>";
+                resp.reset();
+                resp.write_status(200, "OK");
+                resp.write_header("Content-Type", "text/html; charset=utf-8");
+                resp.write_header("Content-Length",
+                                  std::to_string(std::strlen(body)).c_str());
+                resp.write_blank_line();
+                resp.write_body(body);
+                return true;
+            });
+
+        // ---- 静态路由: GET /api/status → 返回 JSON 状态信息 ----
+        m_router_.addRoute(Method::GET, "/api/status",
+            [](HttpRequest& req, HttpResponse& resp) {
+                const char* body = "{ \"status\": \"ok\", \"server\": \"MyWebServer\", "
+                                   "\"routes\": \"static + dynamic\" }";
+                resp.reset();
+                resp.write_status(200, "OK");
+                resp.write_header("Content-Type", "application/json");
+                resp.write_header("Content-Length",
+                                  std::to_string(std::strlen(body)).c_str());
+                resp.write_blank_line();
+                resp.write_body(body);
+                return true;
+            });
+
+        // ---- 动态路由: GET /users/:id → 返回用户信息 JSON ----
+        // 例: /users/123 → {"user_id":"123","name":"User-123"}
+        m_router_.addRoute(Method::GET, "/users/:id",
+            [](HttpRequest& req, HttpResponse& resp) {
+                auto userId = req.get_path_parameters("id");
+                std::string body = "{ \"user_id\": \"" + userId +
+                                   "\", \"name\": \"User-" + userId + "\" }";
+                resp.reset();
+                resp.write_status(200, "OK");
+                resp.write_header("Content-Type", "application/json");
+                resp.write_header("Content-Length",
+                                  std::to_string(body.size()).c_str());
+                resp.write_blank_line();
+                resp.write_body(body.c_str());
+                return true;
+            });
+
+        // ---- 嵌套动态路由: GET /posts/:postId/comments/:commentId ----
+        // 例: /posts/42/comments/7 → 展示两个动态参数
+        m_router_.addRoute(Method::GET, "/posts/:postId/comments/:commentId",
+            [](HttpRequest& req, HttpResponse& resp) {
+                auto postId = req.get_path_parameters("postId");
+                auto commentId = req.get_path_parameters("commentId");
+                std::string body = "<html><body>"
+                                   "<h1>嵌套动态路由测试</h1>"
+                                   "<p>Post ID: <strong>" + postId + "</strong></p>"
+                                   "<p>Comment ID: <strong>" + commentId + "</strong></p>"
+                                   "</body></html>";
+                resp.reset();
+                resp.write_status(200, "OK");
+                resp.write_header("Content-Type", "text/html; charset=utf-8");
+                resp.write_header("Content-Length",
+                                  std::to_string(body.size()).c_str());
+                resp.write_blank_line();
+                resp.write_body(body.c_str());
+                return true;
+            });
+
+        // ---- 静态路由: GET / → 返回 false，让 do_request() 走文件服务 ----
+        // Router 不处理首页，退回给文件服务读取 root/index.html
+        m_router_.addRoute(Method::GET, "/",
+            [](HttpRequest& req, HttpResponse& resp) {
+                return false; // 故意不处理，退回文件服务
+            });
+    }
 
     void start() {
+        // ---- 初始化路由表 ----
+        // 在绑定端口前注册所有路由，确保首次请求时路由已就绪
+        registerRoutes();
+        // 将路由表指针注入 HttpConnect（静态成员，所有连接实例共享）
+        HttpConnect::m_router_ = &m_router_;
+
         //网络编程基础步骤
         m_server_fd_ = socket(AF_INET, SOCK_STREAM, 0);
         assert(m_server_fd_ >= 0);

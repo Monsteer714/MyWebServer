@@ -22,6 +22,7 @@
 #include "HttpRequest.h"
 #include "HttpResponse.h"
 #include "HttpContext.h"
+#include "Router.h"
 #include "../timer/timer_policy.h"
 #include "../util/types.h"
 
@@ -59,6 +60,12 @@ private:
     int m_file_bytes_left_ = {};
     off_t m_file_offset_ = {};
 
+    // 路由分发标志：
+    //   true  = 本次请求已被 Router handler 处理，响应已在 m_response_ 中构建完毕
+    //   false = 走传统的文件服务路径，do_request() → build_response()
+    // 在 init() 中复位，process_read() 中设置
+    bool m_routed_ = {};
+
     //util
     Util m_util_ = {};
 
@@ -75,6 +82,10 @@ private:
 
 public:
     inline static int m_epollfd_ = -1;
+
+    // 全局路由表指针，所有 HttpConnect 实例共享同一个 Router
+    // 由 WebServer::start() 在初始化时设置
+    inline static Router* m_router_ = nullptr;
     int m_state_ = {}; //0:read, 1:write
 public:
     HttpConnect() {
@@ -92,6 +103,7 @@ public:
 
     void init() {
         m_linger_ = {};
+        m_routed_ = false;
         m_response_.bind(m_write_buffer_, WRITE_BUFFER_SIZE);
         m_context_.init();
         m_response_.init();
@@ -129,9 +141,9 @@ public:
     StatusCode process_read() {
         auto ret = m_context_.parse_request(m_read_buffer_);
 
-        //已收到完整请求，处理headers信息与content
+        // 已收到完整请求，处理 keep-alive 与路由分发
         if (ret == StatusCode::SUCCESS) {
-            // 根据 Connection 头和 HTTP 版本决定是否 keep-alive
+            // ---- Connection 头 / keep-alive 判断 ----
             auto conn_hdr = m_context_.m_request_.get_headers("Connection");
             if (!conn_hdr.empty()) {
                 m_linger_ = (conn_hdr == "keep-alive");
@@ -139,6 +151,19 @@ public:
                 // HTTP/1.1 默认 keep-alive；HTTP/1.0 默认 close
                 m_linger_ = (m_context_.m_request_.get_version() == "HTTP/1.1");
             }
+
+            // ---- 步骤 1: 尝试路由分发 ----
+            // 若 Router 匹配到 handler，handler 会将完整 HTTP 响应
+            // 直接写入 m_response_ 缓冲区（通过其底层 API）。
+            // 此时 m_routed_ 置为 true，后续 process_write() 跳过
+            // build_response()，直接发送缓冲区内容。
+            if (m_router_ && m_router_->route(m_context_.m_request_, m_response_)) {
+                m_routed_ = true;
+                return StatusCode::OK;
+            }
+
+            // ---- 步骤 2: 未匹配路由 → 退回传统文件服务 ----
+            m_routed_ = false;
             return do_request();
         }
         return ret;
@@ -171,6 +196,18 @@ public:
     }
 
     bool process_write(StatusCode code) {
+        // ---- 路由响应路径 ----
+        // handler 已将完整 HTTP 响应（状态行 + 头部 + 空行 + body）
+        // 写入 m_response_ 缓冲区，无需 build_response()
+        if (m_routed_) {
+            m_bytes_to_send_ = m_response_.get_write_idx();
+            m_bytes_have_sent_ = 0;
+            m_send_state_ = SEND_STATE::SEND_HEAD;
+            // m_file_bytes_left_ = 0，write() 中的 SEND_FILE 分支自动跳过
+            return true;
+        }
+
+        // ---- 文件服务路径 ----
         // 仅 OK 响应的 body 来自文件，其余响应的 body 已含在缓冲区中
         int file_size = (code == StatusCode::OK) ? m_file_stat_.st_size : 0;
         if (!m_response_.build_response(code, file_size, m_linger_)) {
