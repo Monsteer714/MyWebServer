@@ -113,78 +113,108 @@ public:
     void registerRoutes() {
         // ---- 静态路由: GET /hello → 返回纯文本问候 ----
         m_router_.addRoute(Method::GET, "/hello",
-            [](HttpRequest& req, HttpResponse& resp) {
-                const char* body = "<html><body><h1>Hello from Router!</h1>"
+                           [](HttpRequest& req, HttpResponse& resp) {
+                               const char* body = "<html><body><h1>Hello from Router!</h1>"
                                    "<p>这是一条静态路由响应。</p></body></html>";
-                resp.reset();
-                resp.write_status(200, "OK");
-                resp.write_header("Content-Type", "text/html; charset=utf-8");
-                resp.write_header("Content-Length",
-                                  std::to_string(std::strlen(body)).c_str());
-                resp.write_blank_line();
-                resp.write_body(body);
-                return true;
-            });
+                               resp.reset();
+                               resp.write_status(200, "OK");
+                               resp.write_header("Content-Type", "text/html; charset=utf-8");
+                               resp.write_header("Content-Length",
+                                                 std::to_string(std::strlen(body)).c_str());
+                               resp.write_blank_line();
+                               resp.write_body(body);
+                               return true;
+                           });
 
         // ---- 静态路由: GET /api/status → 返回 JSON 状态信息 ----
         m_router_.addRoute(Method::GET, "/api/status",
-            [](HttpRequest& req, HttpResponse& resp) {
-                const char* body = "{ \"status\": \"ok\", \"server\": \"MyWebServer\", "
+                           [](HttpRequest& req, HttpResponse& resp) {
+                               const char* body = "{ \"status\": \"ok\", \"server\": \"MyWebServer\", "
                                    "\"routes\": \"static + dynamic\" }";
-                resp.reset();
-                resp.write_status(200, "OK");
-                resp.write_header("Content-Type", "application/json");
-                resp.write_header("Content-Length",
-                                  std::to_string(std::strlen(body)).c_str());
-                resp.write_blank_line();
-                resp.write_body(body);
-                return true;
-            });
+                               resp.reset();
+                               resp.write_status(200, "OK");
+                               resp.write_header("Content-Type", "application/json");
+                               resp.write_header("Content-Length",
+                                                 std::to_string(std::strlen(body)).c_str());
+                               resp.write_blank_line();
+                               resp.write_body(body);
+                               return true;
+                           });
 
         // ---- 动态路由: GET /users/:id → 返回用户信息 JSON ----
         // 例: /users/123 → {"user_id":"123","name":"User-123"}
         m_router_.addRoute(Method::GET, "/users/:id",
-            [](HttpRequest& req, HttpResponse& resp) {
-                auto userId = req.get_path_parameters("id");
-                std::string body = "{ \"user_id\": \"" + userId +
+                           [](HttpRequest& req, HttpResponse& resp) {
+                               auto userId = req.get_path_parameters("id");
+                               std::string body = "{ \"user_id\": \"" + userId +
                                    "\", \"name\": \"User-" + userId + "\" }";
-                resp.reset();
-                resp.write_status(200, "OK");
-                resp.write_header("Content-Type", "application/json");
-                resp.write_header("Content-Length",
-                                  std::to_string(body.size()).c_str());
-                resp.write_blank_line();
-                resp.write_body(body.c_str());
-                return true;
-            });
+                               resp.reset();
+                               resp.write_status(200, "OK");
+                               resp.write_header("Content-Type", "application/json");
+                               resp.write_header("Content-Length",
+                                                 std::to_string(body.size()).c_str());
+                               resp.write_blank_line();
+                               resp.write_body(body.c_str());
+                               return true;
+                           });
 
         // ---- 嵌套动态路由: GET /posts/:postId/comments/:commentId ----
         // 例: /posts/42/comments/7 → 展示两个动态参数
         m_router_.addRoute(Method::GET, "/posts/:postId/comments/:commentId",
-            [](HttpRequest& req, HttpResponse& resp) {
-                auto postId = req.get_path_parameters("postId");
-                auto commentId = req.get_path_parameters("commentId");
-                std::string body = "<html><body>"
+                           [](HttpRequest& req, HttpResponse& resp) {
+                               auto postId = req.get_path_parameters("postId");
+                               auto commentId = req.get_path_parameters("commentId");
+                               std::string body = "<html><body>"
                                    "<h1>嵌套动态路由测试</h1>"
                                    "<p>Post ID: <strong>" + postId + "</strong></p>"
                                    "<p>Comment ID: <strong>" + commentId + "</strong></p>"
                                    "</body></html>";
-                resp.reset();
-                resp.write_status(200, "OK");
-                resp.write_header("Content-Type", "text/html; charset=utf-8");
-                resp.write_header("Content-Length",
-                                  std::to_string(body.size()).c_str());
-                resp.write_blank_line();
-                resp.write_body(body.c_str());
-                return true;
-            });
+                               resp.reset();
+                               resp.write_status(200, "OK");
+                               resp.write_header("Content-Type", "text/html; charset=utf-8");
+                               resp.write_header("Content-Length",
+                                                 std::to_string(body.size()).c_str());
+                               resp.write_blank_line();
+                               resp.write_body(body.c_str());
+                               return true;
+                           });
+
+        // ---- 动态路由: GET /download/:filename → sendfile 零拷贝文件下载 ----
+        // handler 通过 resp.set_file_body() 打开文件，
+        // HttpConnect 检测到文件 body 后自动走 sendfile 而非 write()
+        m_router_.addRoute(Method::GET, "/download/:filename",
+                           [](HttpRequest& req, HttpResponse& resp) {
+                               auto filename = req.get_path_parameters("filename");
+                               std::string filepath = "./root/" + filename;
+
+                               // set_file_body 打开文件并记录 fd + size
+                               if (!resp.set_file_body(filepath)) {
+                                   // 文件不存在 → handler 返回 404（纯内存响应）
+                                   resp.reset();
+                                   resp.write_status(404, "Not Found");
+                                   resp.write_header("Content-Type", "text/plain");
+                                   resp.write_header("Content-Length", "0");
+                                   resp.write_blank_line();
+                                   return true;
+                               }
+
+                               resp.reset();
+                               resp.write_status(200, "OK");
+                               resp.write_header("Content-Type", "application/octet-stream");
+                               resp.write_header("Content-Length",
+                                                 std::to_string(resp.file_body_size()).c_str());
+                               resp.write_header("Content-Disposition",
+                                                 ("attachment; filename=\"" + filename + "\"").c_str());
+                               resp.write_blank_line(); // 不调用 write_body — body 由 sendfile 发送
+                               return true;
+                           });
 
         // ---- 静态路由: GET / → 返回 false，让 do_request() 走文件服务 ----
         // Router 不处理首页，退回给文件服务读取 root/index.html
         m_router_.addRoute(Method::GET, "/",
-            [](HttpRequest& req, HttpResponse& resp) {
-                return false; // 故意不处理，退回文件服务
-            });
+                           [](HttpRequest& req, HttpResponse& resp) {
+                               return false; // 故意不处理，退回文件服务
+                           });
     }
 
     void start() {

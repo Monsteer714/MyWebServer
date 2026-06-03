@@ -171,7 +171,8 @@ public:
 
     //处理返回文件路径
     StatusCode do_request() {
-        m_file_path_ = m_context_.get_request().get_path();
+        // 直接访问 m_request_ 避免拷贝 — get_request() 已改为返回引用
+        m_file_path_ = m_context_.m_request_.get_path();
 
         // 目录路径默认返回 index.html
         if (stat(m_file_path_.c_str(), &m_file_stat_) < 0 || S_ISDIR(m_file_stat_.st_mode)) {
@@ -197,13 +198,21 @@ public:
 
     bool process_write(StatusCode code) {
         // ---- 路由响应路径 ----
-        // handler 已将完整 HTTP 响应（状态行 + 头部 + 空行 + body）
-        // 写入 m_response_ 缓冲区，无需 build_response()
+        // handler 已将 HTTP 响应头写入 m_response_ 缓冲区
         if (m_routed_) {
-            m_bytes_to_send_ = m_response_.get_write_idx();
+            if (m_response_.has_file_body()) {
+                // handler 调用了 set_file_body() → 走 sendfile 零拷贝
+                // HTTP 头在缓冲区，body 来自文件 fd
+                m_file_fd_         = m_response_.release_file_body_fd();
+                m_file_bytes_left_ = m_response_.file_body_size();
+                m_file_offset_     = 0;
+                m_bytes_to_send_   = m_response_.get_write_idx() + m_file_bytes_left_;
+            } else {
+                // 纯内存响应：状态行 + 头部 + body 全在缓冲区中
+                m_bytes_to_send_   = m_response_.get_write_idx();
+            }
             m_bytes_have_sent_ = 0;
             m_send_state_ = SEND_STATE::SEND_HEAD;
-            // m_file_bytes_left_ = 0，write() 中的 SEND_FILE 分支自动跳过
             return true;
         }
 

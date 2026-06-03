@@ -10,6 +10,9 @@
 #include <string>
 #include <cstdarg>
 #include <cstdio>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/stat.h>
 #include "../util/types.h"
 inline const char* ok_200_title = "OK";
 inline const char* error_400_title = "Bad Request";
@@ -29,6 +32,11 @@ private:
     int m_buffer_size_ = 0;
     int m_write_idx_ = 0;
     std::string m_mime_type_;
+
+    // 文件 body — handler 可指定磁盘文件作为响应体，HttpConnect 通过 sendfile 发送
+    // fd 所有权：set_file_body() 创建 → release_file_body_fd() 移交给 HttpConnect
+    int    m_file_body_fd_   = -1;
+    size_t m_file_body_size_ = 0;
 
     bool append(const char* format, ...) {
         va_list args;
@@ -71,6 +79,12 @@ public:
 
     void init() {
         m_write_idx_ = 0;
+        // 清理上一次请求可能残留的文件 body fd（如 handler 设了 body 但请求异常中断）
+        if (m_file_body_fd_ >= 0) {
+            close(m_file_body_fd_);
+            m_file_body_fd_ = -1;
+        }
+        m_file_body_size_ = 0;
     }
 
     inline const void set_mime_type(const std::string& path) {
@@ -105,6 +119,37 @@ public:
     }
 
     const std::string& get_mime_type() const { return m_mime_type_; }
+
+    // =========================================================================
+    // 文件 body — handler 可指定磁盘文件作为响应体，HttpConnect 通过 sendfile 零拷贝发送
+    // =========================================================================
+    // handler 中调用 set_file_body() 打开文件，再正常写 HTTP 头（含 Content-Length）
+    // 但不要调用 write_body()  — body 由 sendfile 直接从文件 fd 传输
+    //
+    // 使用示例（handler 内）:
+    //   if (!resp.set_file_body("/data/report.json")) { return 404; }
+    //   resp.write_status(200, "OK");
+    //   resp.write_header("Content-Length", std::to_string(resp.file_body_size()));
+    //   resp.write_blank_line();    // 无 write_body，body 来自文件
+    //   return true;
+
+    // 打开文件作为响应体，返回 false 表示打开失败（handler 应返回 404/500）
+    bool set_file_body(const std::string& path) {
+        int fd = open(path.c_str(), O_RDONLY);
+        if (fd < 0) return false;
+        struct stat st;
+        if (fstat(fd, &st) < 0) { close(fd); return false; }
+        if (m_file_body_fd_ >= 0) close(m_file_body_fd_);
+        m_file_body_fd_   = fd;
+        m_file_body_size_ = st.st_size;
+        return true;
+    }
+
+    bool   has_file_body()   const { return m_file_body_fd_ >= 0; }
+    size_t file_body_size()  const { return m_file_body_size_; }
+
+    // 移交 fd 所有权给 HttpConnect — 之后由 write() 末尾的 close(m_file_fd_) 统一关闭
+    int release_file_body_fd() { int fd = m_file_body_fd_; m_file_body_fd_ = -1; return fd; }
 
     bool build_response(StatusCode code, size_t content_length, bool keep_alive) {
         m_write_idx_ = 0;

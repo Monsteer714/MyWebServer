@@ -151,7 +151,8 @@ public:
         return StatusCode::UNKNOWN;
     }
 
-    HttpRequest get_request() {
+    // 返回引用避免拷贝 — HttpRequest 内含 unordered_map, 每次拷贝开销大
+    HttpRequest& get_request() {
         return m_request_;
     }
 };

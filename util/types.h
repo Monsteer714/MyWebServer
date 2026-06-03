@@ -7,7 +7,7 @@
 
 
 constexpr static int READ_BUFFER_SIZE = 2048;
-constexpr static int WRITE_BUFFER_SIZE = 1024;
+constexpr static int WRITE_BUFFER_SIZE = 8192;  // 8KB，足够容纳路由 handler 的完整 HTTP 响应
 
 
 enum class CHECK_STATE {
