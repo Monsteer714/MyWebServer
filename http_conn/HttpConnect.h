@@ -23,6 +23,7 @@
 #include "HttpResponse.h"
 #include "HttpContext.h"
 #include "../timer/timer_policy.h"
+#include "../util/types.h"
 
 #ifdef __linux__
 #include <sys/sendfile.h>
@@ -42,9 +43,6 @@ inline int sendfile_wrap(int out_fd, int in_fd, off_t* offset, int count) {
 
 class HttpConnect {
 public:
-    constexpr static int READ_BUFFER_SIZE = 2048;
-    constexpr static int WRITE_BUFFER_SIZE = 1024;
-
 private:
     int m_client_fd_ = {};
     bool m_linger_ = {};
@@ -160,6 +158,8 @@ public:
                 return StatusCode::NOT_FOUND;
             }
         }
+
+        m_response_.set_mime_type(m_file_path_);
 
         m_file_fd_ = open(m_file_path_.c_str(), O_RDONLY);
         if (m_file_fd_ < 0) {

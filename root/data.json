@@ -1,0 +1,9 @@
+{
+  "status": "ok",
+  "message": "JSON MIME type test passed",
+  "data": {
+    "server": "MyWebServer",
+    "version": "1.0.0",
+    "features": ["static-files", "dynamic-routing", "mime-types"]
+  }
+}

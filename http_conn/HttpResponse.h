@@ -10,23 +10,7 @@
 #include <string>
 #include <cstdarg>
 #include <cstdio>
-
-enum class StatusCode {
-    UNKNOWN = 0,
-    SUCCESS = 1,
-    OK = 200,
-    BAD_REQUEST = 400,
-    FORBIDDEN = 403,
-    NOT_FOUND = 404,
-    INTERNAL_ERROR = 500,
-    BAD_GATEWAY = 502,
-};
-
-enum class SEND_STATE {
-    SEND_HEAD = 0,
-    SEND_FILE,
-};
-
+#include "../util/types.h"
 inline const char* ok_200_title = "OK";
 inline const char* error_400_title = "Bad Request";
 inline const char* error_400_form = "Your request has bad syntax or is inherently impossible to satisfy.\n";
@@ -44,6 +28,7 @@ private:
     char* m_buffer_ = nullptr;
     int m_buffer_size_ = 0;
     int m_write_idx_ = 0;
+    std::string m_mime_type_;
 
     bool append(const char* format, ...) {
         va_list args;
@@ -65,7 +50,7 @@ private:
 
     bool add_headers(size_t content_length, bool keep_alive) {
         return append("Content-Length:%zu\r\n", content_length)
-            && append("Content-Type:%s\r\n", "text/html")
+            && append("Content-Type:%s\r\n", m_mime_type_.c_str())
             && append("Connection:%s\r\n", keep_alive ? "keep-alive" : "close")
             && append("\r\n");
     }
@@ -88,6 +73,38 @@ public:
         m_write_idx_ = 0;
     }
 
+    inline const void set_mime_type(const std::string& path) {
+        static const std::unordered_map<std::string, std::string> mime_types = {
+            {".html", "text/html"},
+            {".css", "text/css"},
+            {".js", "application/javascript"},
+            {".json", "application/json"},
+            {".png", "image/png"},
+            {".jpg", "image/jpeg"},
+            {".jpeg", "image/jpeg"},
+            {".gif", "imgae/gif"},
+            {".svg", "image/svg+xml"},
+        };
+
+        auto pos = path.rfind(".");
+        if (pos == std::string::npos) {
+            static const std::string fallback = "application/octet-stream";
+            m_mime_type_ = fallback;
+            return;
+        }
+
+        std::string ext = path.substr(pos);
+        auto it = mime_types.find(ext);
+        if (it != mime_types.end()) {
+            m_mime_type_ = it->second;
+            return;
+        }
+        static const std::string fallback = "application/octet-stream";
+        m_mime_type_ = fallback;
+        return;
+    }
+
+    const std::string& get_mime_type() const { return m_mime_type_; }
 
     bool build_response(StatusCode code, size_t content_length, bool keep_alive) {
         m_write_idx_ = 0;

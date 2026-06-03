@@ -20,6 +20,7 @@
 #include "timer/timer_policy.h"
 #include "timer/timer_lst.h"
 #include "timer/timer_wheel.h"
+#include "util/types.h"
 
 //threads number for thread pool
 constexpr int THREAD_NUM = 8;
@@ -52,6 +53,8 @@ private:
     //log
     int m_close_log_ = {};
     int m_log_model_ = {};
+
+
     //初始化新的http连接，初始化该连接对应的定时器
     void createConn(int connfd) {
         m_user_[connfd].init(connfd);
@@ -99,6 +102,10 @@ public:
             Async_Log::getInstance()->init("./ServerLog", m_close_log_);
         }
     }
+
+    //void createTypes() {
+    //    Types::getInstance()->init();
+    //}
 
     void start() {
         //网络编程基础步骤

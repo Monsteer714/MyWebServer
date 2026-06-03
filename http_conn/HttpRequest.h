@@ -7,11 +7,7 @@
 #include <cassert>
 #include <string>
 #include <unordered_map>
-
-enum class Method {
-    GET = 0,
-    POST = 1,
-};
+#include "../util/types.h"
 
 class HttpRequest {
 private:

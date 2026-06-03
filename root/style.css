@@ -1,0 +1,22 @@
+/* style.css - MIME type test file */
+body {
+    font-family: Arial, sans-serif;
+}
+
+.test-box {
+    border: 2px solid #4CAF50;
+    padding: 20px;
+    margin: 10px 0;
+    border-radius: 8px;
+    background: #f0fff0;
+}
+
+.test-box h2 {
+    color: #333;
+    margin-top: 0;
+}
+
+.test-box p {
+    color: #666;
+    line-height: 1.6;
+}

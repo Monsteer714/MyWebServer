@@ -3,89 +3,505 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>最小 Web 服务器</title>
+    <title>Web 服务器测试面板</title>
     <style>
+        :root {
+            --bg: #f0f2f5;
+            --card-bg: #ffffff;
+            --border: #e0e0e0;
+            --text: #333;
+            --text-secondary: #666;
+            --primary: #4a90d9;
+            --success: #28a745;
+            --danger: #dc3545;
+            --warn: #e6a817;
+            --tag-html: #e44d26;
+            --tag-css: #264de4;
+            --tag-js: #f7df1e;
+            --tag-json: #5b8c5a;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
         body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f5f5f5;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
         }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50, #3498db);
+            color: white;
+            padding: 32px 20px;
+            text-align: center;
+        }
+        .header h1 { font-size: 28px; margin-bottom: 8px; }
+        .header p { opacity: 0.85; font-size: 14px; }
+
         .container {
-            background: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 24px 16px;
         }
-        h1 {
-            color: #333;
-            text-align: center;
+
+        /* ---- 卡片 ---- */
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            margin-bottom: 24px;
+            overflow: hidden;
         }
-        .success {
-            color: #28a745;
-            font-size: 18px;
-            text-align: center;
-            margin: 20px 0;
+        .card-header {
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border);
+            font-size: 17px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
-        .info {
-            background: #e7f3ff;
-            padding: 15px;
-            border-left: 4px solid #007bff;
-            margin: 20px 0;
+        .card-header .icon { font-size: 20px; }
+        .card-body { padding: 20px 24px; }
+
+        /* ---- 按钮组 ---- */
+        .btn-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
         }
-        .code {
-            background: #f8f9fa;
-            padding: 10px;
-            border-radius: 4px;
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 18px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: #fafafa;
+            cursor: pointer;
+            font-size: 13px;
             font-family: monospace;
-            margin: 10px 0;
+            transition: all 0.15s;
+        }
+        .btn:hover {
+            background: #eef4fb;
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+        .btn:active { transform: scale(0.97); }
+        .btn--primary {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+        .btn--primary:hover {
+            background: #3a7bc8;
+            color: white;
+        }
+        .btn--block {
+            display: flex;
+            width: 100%;
+            justify-content: center;
+            font-size: 14px;
+            padding: 12px;
+        }
+
+        /* ---- 路径/URL 标签 ---- */
+        .url-tag {
+            font-family: monospace;
+            font-size: 12px;
+            background: #f0f4f8;
+            padding: 2px 8px;
+            border-radius: 4px;
+            color: #555;
+        }
+        .param-highlight {
+            background: #fff3cd;
+            color: #856404;
+            font-weight: 600;
+        }
+
+        /* ---- 结果面板 ---- */
+        .result-panel {
+            margin-top: 20px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+            display: none;
+        }
+        .result-panel.visible { display: block; }
+
+        .result-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            padding: 12px 16px;
+            background: #f9fafb;
+            border-bottom: 1px solid var(--border);
+            font-size: 13px;
+            font-family: monospace;
+        }
+        .result-meta span { display: inline-flex; align-items: center; gap: 4px; }
+
+        .status-badge {
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 12px;
+        }
+        .status-ok { background: #d4edda; color: #155724; }
+        .status-err { background: #f8d7da; color: #721c24; }
+        .status-warn { background: #fff3cd; color: #856404; }
+
+        .mime-badge {
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 12px;
+            background: #e2e3f1;
+            color: #3a3f8e;
+        }
+
+        .result-body {
+            max-height: 300px;
+            overflow: auto;
+            padding: 16px;
+            font-family: "SF Mono", "Fira Code", monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-break: break-all;
+            background: #1e1e1e;
+            color: #d4d4d4;
+        }
+
+        .loading-text {
+            text-align: center;
+            padding: 20px;
+            color: var(--text-secondary);
+        }
+
+        /* ---- MIME 类型网格 ---- */
+        .mime-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+        }
+        .mime-card {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 14px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .mime-card:hover {
+            border-color: var(--primary);
+            box-shadow: 0 2px 8px rgba(74,144,217,0.12);
+        }
+        .mime-card .ext {
+            font-size: 22px;
+            font-weight: 700;
+            font-family: monospace;
+        }
+        .mime-card .expected {
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+            font-family: monospace;
+        }
+        .mime-card .actual {
+            font-size: 12px;
+            margin-top: 4px;
+            font-weight: 600;
+            min-height: 18px;
+        }
+        .mime-card .actual.match { color: var(--success); }
+        .mime-card .actual.mismatch { color: var(--danger); }
+
+        /* ---- 页脚 ---- */
+        .footer {
+            text-align: center;
+            color: #999;
+            font-size: 12px;
+            padding: 20px;
+        }
+
+        /* ---- 响应式 ---- */
+        @media (max-width: 600px) {
+            .btn-row { flex-direction: column; }
+            .btn { justify-content: center; }
+            .mime-grid { grid-template-columns: 1fr 1fr; }
+            .result-meta { flex-direction: column; gap: 4px; }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>🎉 恭喜！</h1>
-        <div class="success">
-            您的最小 Web 服务器运行成功！
-        </div>
 
-        <div class="info">
-            <h3>服务器信息：</h3>
-            <ul>
-                <li><strong>服务器类型：</strong>最小可行版本 Web 服务器</li>
-                <li><strong>支持功能：</strong>GET 请求、静态文件服务</li>
-                <li><strong>编程语言：</strong>C++</li>
-                <li><strong>当前时间：</strong><span id="time"></span></li>
-            </ul>
-        </div>
+<div class="header">
+    <h1>MyWebServer 测试面板</h1>
+    <p>动态路由 · MIME 类型 · 静态文件服务 — 一键验证</p>
+</div>
 
-        <div class="info">
-            <h3>测试其他页面：</h3>
-            <ul>
-                <li><a href="/test.html">测试页面</a></li>
-                <li><a href="/style.css">CSS 文件</a></li>
-                <li><a href="/script.js">JavaScript 文件</a></li>
-            </ul>
-        </div>
+<div class="container">
 
-        <div class="info">
-            <h3>如何改进：</h3>
-            <ul>
-                <li>添加多线程支持</li>
-                <li>实现 HTTP POST 请求</li>
-                <li>添加日志记录</li>
-                <li>支持更多文件类型</li>
+    <!-- ==================== 动态路由测试 ==================== -->
+    <div class="card">
+        <div class="card-header">
+            <span class="icon">🔀</span> 动态路由测试
+            <span style="font-weight:400;font-size:12px;color:#999;margin-left:auto;">:param 占位符匹配</span>
+        </div>
+        <div class="card-body">
+            <p style="margin-bottom:14px;color:var(--text-secondary);font-size:14px;">
+                以下路径带 <span class="param-highlight">:param</span> 动态参数，
+                点击后发起 GET 请求，观察服务器是否正确匹配路由并提取参数。
+            </p>
+            <div class="btn-row">
+                <button class="btn" data-url="/users/123">
+                    GET <span class="url-tag">/users/<span class="param-highlight">123</span></span>
+                </button>
+                <button class="btn" data-url="/users/999">
+                    GET <span class="url-tag">/users/<span class="param-highlight">999</span></span>
+                </button>
+                <button class="btn" data-url="/posts/42/comments/7">
+                    GET <span class="url-tag">/posts/<span class="param-highlight">42</span>/comments/<span class="param-highlight">7</span></span>
+                </button>
+                <button class="btn" data-url="/posts/100/comments/200">
+                    GET <span class="url-tag">/posts/<span class="param-highlight">100</span>/comments/<span class="param-highlight">200</span></span>
+                </button>
+                <button class="btn" data-url="/api/status">
+                    GET <span class="url-tag">/api/status</span>
+                </button>
+                <button class="btn" data-url="/notexist">
+                    GET <span class="url-tag">/notexist</span> (404)
+                </button>
+            </div>
+
+            <!-- 自定义路由输入 -->
+            <div style="margin-top:14px;display:flex;gap:8px;">
+                <input type="text" id="custom-url"
+                       placeholder="输入自定义路径，如 /users/456"
+                       style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-family:monospace;font-size:13px;">
+                <button class="btn btn--primary" id="btn-custom">发送请求</button>
+            </div>
+
+            <!-- 结果显示 -->
+            <div class="result-panel" id="route-result">
+                <div class="result-meta" id="route-meta"></div>
+                <div class="result-body" id="route-body"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== MIME 类型测试 ==================== -->
+    <div class="card">
+        <div class="card-header">
+            <span class="icon">📄</span> MIME 类型测试
+            <span style="font-weight:400;font-size:12px;color:#999;margin-left:auto;">Content-Type 验证</span>
+        </div>
+        <div class="card-body">
+            <p style="margin-bottom:14px;color:var(--text-secondary);font-size:14px;">
+                点击卡片获取对应资源，验证服务器返回的 <code>Content-Type</code> 是否正确。
+            </p>
+            <div class="mime-grid" id="mime-grid">
+                <!-- JS 动态生成 -->
+            </div>
+
+            <!-- 文件列表 -->
+            <p style="margin-top:20px;margin-bottom:8px;font-size:14px;color:var(--text-secondary);">
+                或直接点击链接测试：
+            </p>
+            <div class="btn-row">
+                <a href="/style.css" class="btn">🎨 style.css</a>
+                <a href="/script.js" class="btn">⚡ script.js</a>
+                <a href="/data.json" class="btn">📋 data.json</a>
+                <button class="btn" id="btn-run-all">▶ 一键测试全部</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== 服务器信息 ==================== -->
+    <div class="card">
+        <div class="card-header">
+            <span class="icon">📡</span> 服务器信息
+        </div>
+        <div class="card-body">
+            <ul style="list-style:none;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;font-size:14px;">
+                <li>✅ <strong>服务器类型：</strong>C++ Epoll 高并发</li>
+                <li>✅ <strong>支持方法：</strong>GET / POST</li>
+                <li>✅ <strong>线程模型：</strong>Reactor / Proactor</li>
+                <li>✅ <strong>定时器：</strong>链表 / 时间轮</li>
+                <li>✅ <strong>当前时间：</strong><span id="time"></span></li>
+                <li>✅ <strong>路由总数：</strong><span id="route-count" style="color:var(--text-secondary);">加载中...</span></li>
             </ul>
         </div>
     </div>
 
-    <script>
-        function updateTime() {
-            document.getElementById('time').textContent = new Date().toLocaleString('zh-CN');
-        }
-        updateTime();
-        setInterval(updateTime, 1000);
-    </script>
+</div>
+
+<div class="footer">
+    MyWebServer Test Panel — 所有请求通过 fetch() 发起，结果实时展示
+</div>
+
+<!-- ==================== 测试逻辑 ==================== -->
+<script>
+// ---- 时钟 ----
+function updateTime() {
+    document.getElementById('time').textContent = new Date().toLocaleString('zh-CN');
+}
+updateTime();
+setInterval(updateTime, 1000);
+
+// ---- MIME 类型定义 ----
+const MIME_TESTS = [
+    { ext: '.html',  url: '/',          expected: 'text/html',              icon: '🌐', desc: 'HTML 页面' },
+    { ext: '.css',   url: '/style.css', expected: 'text/css',               icon: '🎨', desc: '样式表' },
+    { ext: '.js',    url: '/script.js', expected: 'application/javascript', icon: '⚡', desc: 'JavaScript' },
+    { ext: '.json',  url: '/data.json', expected: 'application/json',       icon: '📋', desc: 'JSON 数据' },
+    { ext: '.txt',   url: '/data.json', expected: 'text/plain',             icon: '📝', desc: '纯文本' }, // 预期会 mismatch
+    { ext: '.png',   url: '/none.png',  expected: 'image/png',              icon: '🖼️', desc: 'PNG 图片' },
+];
+
+// ---- 生成 MIME 卡片 ----
+const mimeGrid = document.getElementById('mime-grid');
+MIME_TESTS.forEach(t => {
+    const card = document.createElement('div');
+    card.className = 'mime-card';
+    card.innerHTML = `
+        <div style="font-size:24px;">${t.icon}</div>
+        <div class="ext">${t.ext}</div>
+        <div class="expected">期望: ${t.expected}</div>
+        <div class="actual" id="mime-${t.ext.replace('.','')}">—</div>
+    `;
+    card.addEventListener('click', () => testMime(t));
+    mimeGrid.appendChild(card);
+});
+
+// ---- 通用请求函数 ----
+async function doFetch(url) {
+    const start = performance.now();
+    let resp;
+    try {
+        resp = await fetch(url);
+    } catch (e) {
+        return { error: true, message: e.message, url, time: 0 };
+    }
+    const time = (performance.now() - start).toFixed(1);
+    const ct = resp.headers.get('Content-Type') || '(无)';
+    const body = await resp.text();
+    return {
+        error: false,
+        url,
+        status: resp.status,
+        statusText: resp.statusText,
+        contentType: ct,
+        body: body.length > 2000 ? body.slice(0, 2000) + '\n... (截断)' : body,
+        time,
+    };
+}
+
+// ---- 显示路由测试结果 ----
+function showRouteResult(result) {
+    const panel = document.getElementById('route-result');
+    const meta = document.getElementById('route-meta');
+    const body = document.getElementById('route-body');
+
+    panel.classList.add('visible');
+
+    if (result.error) {
+        meta.innerHTML = `<span style="color:var(--danger);">❌ 请求失败: ${result.message}</span>`;
+    } else {
+        const badgeClass = result.status === 200 ? 'status-ok' :
+                          (result.status === 404 ? 'status-warn' : 'status-err');
+        meta.innerHTML = `
+            <span>📤 <strong>${result.url}</strong></span>
+            <span class="status-badge ${badgeClass}">${result.status} ${result.statusText}</span>
+            <span class="mime-badge">${escapeHtml(result.contentType)}</span>
+            <span>⏱ ${result.time}ms</span>
+        `;
+    }
+    body.textContent = result.error ? result.message : (result.body || '(空响应)');
+}
+
+// ---- 测试 MIME 类型 ----
+async function testMime(t) {
+    const result = await doFetch(t.url);
+    const id = 'mime-' + t.ext.replace('.', '');
+    const el = document.getElementById(id);
+    if (!el) return;
+
+    if (result.error) {
+        el.textContent = '❌ ' + result.message;
+        el.className = 'actual mismatch';
+    } else {
+        const actualCT = result.contentType.split(';')[0].trim();
+        const match = actualCT === t.expected;
+        el.textContent = (match ? '✅ ' : '⚠️ ') + actualCT;
+        el.className = 'actual ' + (match ? 'match' : 'mismatch');
+    }
+}
+
+// ---- 绑定动态路由按钮 ----
+document.querySelectorAll('.btn[data-url]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+        btn.style.opacity = '0.6';
+        const result = await doFetch(btn.dataset.url);
+        showRouteResult(result);
+        btn.style.opacity = '1';
+    });
+});
+
+// ---- 自定义 URL ----
+document.getElementById('btn-custom').addEventListener('click', async () => {
+    const input = document.getElementById('custom-url');
+    let url = input.value.trim();
+    if (!url) return;
+    if (!url.startsWith('/')) url = '/' + url;
+    const result = await doFetch(url);
+    showRouteResult(result);
+});
+
+// 回车触发
+document.getElementById('custom-url').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') document.getElementById('btn-custom').click();
+});
+
+// ---- 一键测试全部 MIME ----
+document.getElementById('btn-run-all').addEventListener('click', async () => {
+    const btn = document.getElementById('btn-run-all');
+    btn.textContent = '⏳ 测试中...';
+    btn.disabled = true;
+    for (const t of MIME_TESTS) {
+        await testMime(t);
+    }
+    btn.textContent = '✅ 测试完成';
+    setTimeout(() => {
+        btn.textContent = '▶ 一键测试全部';
+        btn.disabled = false;
+    }, 1500);
+});
+
+// ---- 辅助函数 ----
+function escapeHtml(s) {
+    const div = document.createElement('div');
+    div.textContent = s;
+    return div.innerHTML;
+}
+
+// ---- 页面加载时预热 ----
+(async function warmup() {
+    // 获取首页确认服务器在线
+    const r = await doFetch('/');
+    if (!r.error) {
+        document.getElementById('route-count').textContent = '在线 ✅';
+        document.getElementById('route-count').style.color = 'var(--success)';
+    } else {
+        document.getElementById('route-count').textContent = '离线 ❌';
+        document.getElementById('route-count').style.color = 'var(--danger)';
+    }
+})();
+</script>
+
 </body>
 </html>

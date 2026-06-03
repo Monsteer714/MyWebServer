@@ -43,7 +43,8 @@ add_executable(server main.cpp
         timer/timer_wheel.cpp
         util/util.cpp
         threadpool/threadpool.h
-        webserver.h)
+        webserver.h
+        util/types.h)
 
 add_executable(http_test http_conn/HttpTest.cpp)
 

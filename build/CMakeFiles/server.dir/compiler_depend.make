@@ -2918,6 +2918,7 @@ CMakeFiles/server.dir/main.cpp.o: /Users/monsteer/Desktop/codes/Learning_Project
   /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/log/log.h \
   /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/timer/timer_lst.h \
   /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/timer/timer_policy.h \
+  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/util/types.h \
   /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/http_conn/HttpConnect.h \
   /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/http_conn/HttpContext.h \
   /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/http_conn/HttpRequest.h \
@@ -2934,6 +2935,7 @@ CMakeFiles/server.dir/main.cpp.o: /Users/monsteer/Desktop/codes/Learning_Project
   /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/timer/timer_lst.h \
   /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/timer/timer_policy.h \
   /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/timer/timer_wheel.h \
+  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/util/types.h \
   /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/webserver.h \
   /usr/local/include/libepoll-shim/epoll-shim/detail/common.h \
   /usr/local/include/libepoll-shim/sys/epoll.h
@@ -6658,6 +6660,8 @@ CMakeFiles/server.dir/util/util.cpp.o: /Users/monsteer/Desktop/codes/Learning_Pr
 /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1/__concepts/swappable.h:
 
 /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1/__concepts/semiregular.h:
+
+/Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/util/types.h:
 
 /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1/__configuration/platform.h:
 

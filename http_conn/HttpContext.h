@@ -6,19 +6,7 @@
 #define MYWEBSERVER_HTTPCONTEXT_H
 #include "HttpResponse.h"
 #include "HttpRequest.h"
-
-enum class CHECK_STATE {
-    CHECK_REQUEST = 0,
-    CHECK_HEADER,
-    CHECK_CONTENT,
-};
-
-enum class LINE_STATE {
-    LINE_OK = 0,
-    LINE_BAD,
-    LINE_OPEN,
-};
-
+#include "../util/types.h"
 class HttpContext {
 public:
     CHECK_STATE m_check_state_ = {};
