@@ -37,7 +37,10 @@ inline int sendfile_wrap(int out_fd, int in_fd, off_t* offset, int count) {
 #else
     off_t len = count;
     int ret = sendfile(in_fd, out_fd, *offset, &len, nullptr, 0);
-    if (ret == 0) { *offset += len; return len; }
+    if (ret == 0) {
+        *offset += len;
+        return len;
+    }
     return -1;
 #endif
 }
@@ -118,7 +121,7 @@ public:
         auto& read_idx = m_context_.m_read_idx_;
         while (true) {
             int n = ::read(m_client_fd_, m_read_buffer_ + read_idx,
-                               READ_BUFFER_SIZE - read_idx);
+                           READ_BUFFER_SIZE - read_idx);
             if (n < 0) {
                 if (errno == EINTR) {
                     continue; // interrupted, retry
@@ -147,7 +150,8 @@ public:
             auto conn_hdr = m_context_.m_request_.get_headers("Connection");
             if (!conn_hdr.empty()) {
                 m_linger_ = (conn_hdr == "keep-alive");
-            } else {
+            }
+            else {
                 // HTTP/1.1 默认 keep-alive；HTTP/1.0 默认 close
                 m_linger_ = (m_context_.m_request_.get_version() == "HTTP/1.1");
             }
@@ -203,13 +207,14 @@ public:
             if (m_response_.has_file_body()) {
                 // handler 调用了 set_file_body() → 走 sendfile 零拷贝
                 // HTTP 头在缓冲区，body 来自文件 fd
-                m_file_fd_         = m_response_.release_file_body_fd();
+                m_file_fd_ = m_response_.release_file_body_fd();
                 m_file_bytes_left_ = m_response_.file_body_size();
-                m_file_offset_     = 0;
-                m_bytes_to_send_   = m_response_.get_write_idx() + m_file_bytes_left_;
-            } else {
+                m_file_offset_ = 0;
+                m_bytes_to_send_ = m_response_.get_write_idx() + m_file_bytes_left_;
+            }
+            else {
                 // 纯内存响应：状态行 + 头部 + body 全在缓冲区中
-                m_bytes_to_send_   = m_response_.get_write_idx();
+                m_bytes_to_send_ = m_response_.get_write_idx();
             }
             m_bytes_have_sent_ = 0;
             m_send_state_ = SEND_STATE::SEND_HEAD;

@@ -7,6 +7,7 @@
 #include "HttpResponse.h"
 #include "HttpRequest.h"
 #include "../util/types.h"
+
 class HttpContext {
 public:
     CHECK_STATE m_check_state_ = {};
@@ -17,6 +18,7 @@ public:
     int m_read_idx_ = {};
     int m_start_line_ = {};
     int m_remain_content_length_ = {};
+
 public:
     void init() {
         m_check_state_ = CHECK_STATE::CHECK_REQUEST;
@@ -70,9 +72,11 @@ public:
             }
             if (cnt == 0) {
                 m_request_.set_method(text + start, text + end);
-            } else if (cnt == 1) {
+            }
+            else if (cnt == 1) {
                 m_request_.set_path(text + start, text + end);
-            } else {
+            }
+            else {
                 m_request_.set_version(text + start, text + end);
             }
             start = end + 1;

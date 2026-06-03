@@ -35,7 +35,7 @@ private:
 
     // 文件 body — handler 可指定磁盘文件作为响应体，HttpConnect 通过 sendfile 发送
     // fd 所有权：set_file_body() 创建 → release_file_body_fd() 移交给 HttpConnect
-    int    m_file_body_fd_   = -1;
+    int m_file_body_fd_ = -1;
     size_t m_file_body_size_ = 0;
 
     bool append(const char* format, ...) {
@@ -118,7 +118,9 @@ public:
         return;
     }
 
-    const std::string& get_mime_type() const { return m_mime_type_; }
+    const std::string& get_mime_type() const {
+        return m_mime_type_;
+    }
 
     // =========================================================================
     // 文件 body — handler 可指定磁盘文件作为响应体，HttpConnect 通过 sendfile 零拷贝发送
@@ -138,18 +140,30 @@ public:
         int fd = open(path.c_str(), O_RDONLY);
         if (fd < 0) return false;
         struct stat st;
-        if (fstat(fd, &st) < 0) { close(fd); return false; }
+        if (fstat(fd, &st) < 0) {
+            close(fd);
+            return false;
+        }
         if (m_file_body_fd_ >= 0) close(m_file_body_fd_);
-        m_file_body_fd_   = fd;
+        m_file_body_fd_ = fd;
         m_file_body_size_ = st.st_size;
         return true;
     }
 
-    bool   has_file_body()   const { return m_file_body_fd_ >= 0; }
-    size_t file_body_size()  const { return m_file_body_size_; }
+    bool has_file_body() const {
+        return m_file_body_fd_ >= 0;
+    }
+
+    size_t file_body_size() const {
+        return m_file_body_size_;
+    }
 
     // 移交 fd 所有权给 HttpConnect — 之后由 write() 末尾的 close(m_file_fd_) 统一关闭
-    int release_file_body_fd() { int fd = m_file_body_fd_; m_file_body_fd_ = -1; return fd; }
+    int release_file_body_fd() {
+        int fd = m_file_body_fd_;
+        m_file_body_fd_ = -1;
+        return fd;
+    }
 
     bool build_response(StatusCode code, size_t content_length, bool keep_alive) {
         m_write_idx_ = 0;
@@ -175,7 +189,8 @@ public:
             add_status_line(200, ok_200_title);
             if (content_length > 0) {
                 return add_headers(content_length, keep_alive);
-            } else {
+            }
+            else {
                 const char* empty_body = "<html><body></body></html>";
                 add_headers(std::strlen(empty_body), keep_alive);
                 return add_content(empty_body);
@@ -185,16 +200,112 @@ public:
         }
     }
 
-    int get_write_idx() const { return m_write_idx_; }
+    int get_write_idx() const {
+        return m_write_idx_;
+    }
 
-    // --- 用于逐步构建响应的底层接口（保留给未来扩展，如 WebSocket 握手） ---
-    void reset() { m_write_idx_ = 0; }
-    bool write_status(int status, const char* title) { return add_status_line(status, title); }
+    // =========================================================================
+    // 底层 API（逐个构建 HTTP 响应的每个部分）
+    // =========================================================================
+    // 需要完全控制响应格式时使用（如 WebSocket 握手、自定义头部顺序等）
+    void reset() {
+        m_write_idx_ = 0;
+    }
+
+    bool write_status(int status, const char* title) {
+        return add_status_line(status, title);
+    }
+
     bool write_header(const char* key, const char* value) {
         return append("%s:%s\r\n", key, value);
     }
-    bool write_blank_line() { return append("\r\n"); }
-    bool write_body(const char* body) { return add_content(body); }
+
+    bool write_blank_line() {
+        return append("\r\n");
+    }
+
+    bool write_body(const char* body) {
+        return add_content(body);
+    }
+
+    // =========================================================================
+    // 便捷 API（handler 中最常用的操作，一行调用替代 6 行样板代码）
+    // =========================================================================
+
+    // 便捷方法: 返回状态码 + 纯文本 body（如 403/404/500 等错误响应）
+    // 用法: resp.send_error(StatusCode::FORBIDDEN);
+    //       resp.send_error(StatusCode::NOT_FOUND, "text/html");
+    bool send_error(StatusCode code, const char* content_type = "text/plain") {
+        const char* title = nullptr;
+        const char* body = nullptr;
+
+        switch (code) {
+        case StatusCode::BAD_REQUEST:
+            title = error_400_title;
+            body = error_400_form;
+            break;
+        case StatusCode::FORBIDDEN:
+            title = error_403_title;
+            body = error_403_form;
+            break;
+        case StatusCode::NOT_FOUND:
+            title = error_404_title;
+            body = error_404_form;
+            break;
+        case StatusCode::INTERNAL_ERROR:
+            title = error_500_title;
+            body = error_500_form;
+            break;
+        default:
+            return false;
+        }
+
+        auto status_code = static_cast<int>(code);
+        return reset(), write_status(status_code, title)
+            && write_header("Content-Type", content_type)
+            && write_header("Content-Length", std::to_string(std::strlen(body)).c_str())
+            && write_blank_line()
+            && write_body(body);
+    }
+
+    // 便捷方法: 返回 200 OK + body（自动计算 Content-Length）
+    // 用法: resp.send_body("<h1>Hello</h1>", "text/html; charset=utf-8");
+    //       resp.send_body(json_str.c_str(), json_str.size(), "application/json");
+    bool send_body(const char* body, const char* content_type) {
+        return reset(), write_status(200, ok_200_title)
+            && write_header("Content-Type", content_type)
+            && write_header("Content-Length", std::to_string(std::strlen(body)).c_str())
+            && write_blank_line()
+            && write_body(body);
+    }
+
+    // 重载: 非 null-terminated 的 body（如 JSON string 内部数据）
+    bool send_body(const char* body, size_t len, const char* content_type) {
+        return reset(), write_status(200, ok_200_title)
+            && write_header("Content-Type", content_type)
+            && write_header("Content-Length", std::to_string(len).c_str())
+            && write_blank_line()
+            && append("%.*s", static_cast<int>(len), body);
+    }
+
+    // 便捷方法: set_file_body + 写头（404 时自动调用 send_error）
+    // 返回 false 表示文件不存在，handler 应 return true（错误响应已写好）
+    bool send_file(const std::string& path, const char* content_type,
+                   const char* download_name = nullptr) {
+        if (!set_file_body(path)) {
+            return send_error(StatusCode::NOT_FOUND);
+        }
+        reset();
+        write_status(200, ok_200_title);
+        write_header("Content-Type", content_type);
+        write_header("Content-Length", std::to_string(file_body_size()).c_str());
+        if (download_name) {
+            write_header("Content-Disposition",
+                         ("attachment; filename=\"" + std::string(download_name) + "\"").c_str());
+        }
+        write_blank_line();
+        return true;
+    }
 };
 
 #endif //MYWEBSERVER_HTTPRESPONSE_H
