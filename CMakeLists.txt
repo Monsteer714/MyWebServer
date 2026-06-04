@@ -44,7 +44,9 @@ add_executable(server main.cpp
         util/util.cpp
         threadpool/threadpool.h
         webserver.h
-        util/types.h)
+        util/types.h
+        middleware/middleware.h
+        middleware/middleware_log.cpp)
 
 add_executable(http_test http_conn/HttpTest.cpp)
 
