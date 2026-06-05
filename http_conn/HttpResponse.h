@@ -87,7 +87,7 @@ public:
         m_file_body_size_ = 0;
     }
 
-    inline const void set_mime_type(const std::string& path) {
+    inline void set_mime_type(const std::string& path) {
         static const std::unordered_map<std::string, std::string> mime_types = {
             {".html", "text/html"},
             {".css", "text/css"},
@@ -96,7 +96,7 @@ public:
             {".png", "image/png"},
             {".jpg", "image/jpeg"},
             {".jpeg", "image/jpeg"},
-            {".gif", "imgae/gif"},
+            {".gif", "image/gif"},
             {".svg", "image/svg+xml"},
         };
 
@@ -144,7 +144,8 @@ public:
             close(fd);
             return false;
         }
-        if (m_file_body_fd_ >= 0) close(m_file_body_fd_);
+        if (m_file_body_fd_ >= 0)
+            close(m_file_body_fd_);
         m_file_body_fd_ = fd;
         m_file_body_size_ = st.st_size;
         return true;
@@ -261,7 +262,8 @@ public:
         }
 
         auto status_code = static_cast<int>(code);
-        return reset(), write_status(status_code, title)
+        reset();
+        return write_status(status_code, title)
             && write_header("Content-Type", content_type)
             && write_header("Content-Length", std::to_string(std::strlen(body)).c_str())
             && write_blank_line()

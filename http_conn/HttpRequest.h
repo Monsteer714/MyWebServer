@@ -21,7 +21,7 @@ private:
 
     std::unordered_map<std::string_view, std::string_view> m_headers_ = {};
 
-    std::unordered_map<std::string, std::string> m_path_parameters = {};
+    std::unordered_map<std::string, std::string> m_path_parameters_ = {};
 
     std::string_view m_body_ = {};
 
@@ -34,7 +34,7 @@ public:
         m_path_ = {};
         m_version_ = {};
         m_headers_ = {};
-        m_path_parameters = {};
+        m_path_parameters_ = {};
         m_body_ = {};
         m_body_length_ = {};
         m_root_ = "./root";
@@ -107,11 +107,11 @@ public:
     }
 
     void set_path_parameters(const std::string& key, const std::string& value) {
-        m_path_parameters[key] = value;
+        m_path_parameters_[key] = value;
     }
 
     std::string get_path_parameters(const std::string& key) {
-        return m_path_parameters[key];
+        return m_path_parameters_[key];
     }
 
     void set_content(const char* start, const char* end) {
