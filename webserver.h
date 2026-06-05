@@ -21,6 +21,8 @@
 #include "timer/timer_lst.h"
 #include "timer/timer_wheel.h"
 #include "util/types.h"
+#include "db_conn/user_auth.h"
+
 
 //threads number for thread pool
 constexpr int THREAD_NUM = 8;
@@ -57,6 +59,9 @@ private:
     int m_close_log_ = {};
     int m_log_model_ = {};
 
+    //database
+    MySQLClient m_mysql_client_ =
+        {"localhost", "root", "", "webserver"};
 
     //初始化新的http连接，初始化该连接对应的定时器
     void createConn(int connfd) {
@@ -97,7 +102,7 @@ public:
         m_thread_pool_ = new Threadpool<HttpConnect>(THREAD_NUM, MAX_FD, m_actor_model_);
     }
 
-    void createLog() {
+    void createLog() const {
         if (m_log_model_ == 0) {
             Log::getInstance()->init("./ServerLog", m_close_log_, 2048, 5000000, 800);
         }
@@ -134,8 +139,8 @@ public:
         m_router_.addRoute(Method::GET, "/users/:id",
                            [](HttpRequest& req, HttpResponse& resp) {
                                auto userId = req.get_path_parameters("id");
-                               std::string body = "{ \"user_id\": \"" + userId +
-                                   "\", \"name\": \"User-" + userId + "\" }";
+                               std::string body = R"({ "user_id": ")" + userId +
+                                   R"(", "name": "User-)" + userId + "\" }";
                                return resp.send_body(body.c_str(), body.size(),
                                                      "application/json");
                            });
@@ -165,6 +170,24 @@ public:
                                                      "application/octet-stream",
                                                      filename.c_str());
                            });
+
+        m_router_.addRoute(Method::POST, "/api/register",
+                            [&](HttpRequest& req, HttpResponse& resp) -> bool {
+                                auto body = req.get_content();
+
+                                //parse json.
+
+                                const std::string username = "test";
+                                const std::string password = "123";
+                                int uid = user_register(m_mysql_client_, username, password);
+                                if (uid == -1) {
+                                    return resp.send_body(
+                                        R"({"status":"error","message":"user exists"})",
+                                        "application/json");
+                                }
+                                std::string success = R"({"status":"ok","message":"success"})";
+                                return resp.send_body(success.c_str(), success.size(), "application/json");
+                            });
 
         // ---- 静态路由: GET / → 返回 false，让 do_request() 走文件服务 ----
         // Router 不处理首页，退回给文件服务读取 root/index.html
