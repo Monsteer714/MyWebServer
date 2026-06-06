@@ -16,13 +16,13 @@
 #include <sys/stat.h>
 #include <stdarg.h>
 
-#include "../log/log.h"
+#include "../log/async_log.h"
 #include "../timer/timer_lst.h"
 
 #include "HttpRequest.h"
 #include "HttpResponse.h"
 #include "HttpContext.h"
-#include "Router.h"
+#include "../routes/Router.h"
 #include "../timer/timer_policy.h"
 #include "../util/types.h"
 
@@ -119,30 +119,84 @@ public:
 
     bool read() {
         auto& read_idx = m_context_.m_read_idx_;
+        int loop_cnt = 0;
+
+        LOG_DEBUG("[read] start, read_idx=%d remain_body=%d",
+                  read_idx, m_context_.m_remain_content_length_);
+
         while (true) {
-            int n = ::read(m_client_fd_, m_read_buffer_ + read_idx,
-                           READ_BUFFER_SIZE - read_idx);
+            ++loop_cnt;
+
+            // ---- 缓冲区压缩：body 太大装不下？把已解析的头部丢弃 ----
+            if (read_idx + 512 >= READ_BUFFER_SIZE
+                && m_context_.m_remain_content_length_ > 0) {
+                size_t body_start = m_context_.m_check_idx_;
+                LOG_DEBUG("[read] need compact, read_idx=%d, check_idx=%d, body_start=%zu",
+                          read_idx, m_context_.m_check_idx_, body_start);
+                if (body_start > 0 && read_idx > static_cast<int>(body_start)) {
+                    int body_len = read_idx - static_cast<int>(body_start);
+                    memmove(m_read_buffer_, m_read_buffer_ + body_start, body_len);
+                    read_idx = body_len;
+                    m_context_.m_start_line_ -= static_cast<int>(body_start);
+                    m_context_.m_check_idx_ = 0;
+                    LOG_DEBUG("[read] compact done, moved %d bytes, read_idx now=%d",
+                              body_len, read_idx);
+                    continue;
+                }
+                LOG_DEBUG("[read] compact skipped, body_start=%zu read_idx=%d",
+                          body_start, read_idx);
+            }
+
+            int space = READ_BUFFER_SIZE - read_idx;
+            LOG_DEBUG("[read] loop#%d: calling ::read(fd=%d, buf+%d, %d)",
+                      loop_cnt, m_client_fd_, read_idx, space);
+            int n = ::read(m_client_fd_, m_read_buffer_ + read_idx, space);
+            LOG_DEBUG("[read] loop#%d: ::read returned %d", loop_cnt, n);
+
             if (n < 0) {
                 if (errno == EINTR) {
-                    continue; // interrupted, retry
+                    LOG_DEBUG("[read] EINTR, retry");
+                    continue;
                 }
                 if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                    break; // No more data to read right now
+                    LOG_DEBUG("[read] EAGAIN, done reading. read_idx=%d remain=%d",
+                              read_idx, m_context_.m_remain_content_length_);
+                    break;
                 }
+                LOG_ERROR("[read] error, errno=%d", errno);
                 perror("read");
                 return false;
             }
             if (n == 0) {
-                // Client closed the connection
+                LOG_DEBUG("[read] ::read returned 0 (client close or count=0)");
                 return false;
             }
             read_idx += n;
+            LOG_DEBUG("[read] after read: +%d bytes, read_idx=%d/%d",
+                      n, read_idx, READ_BUFFER_SIZE);
+
+            // body 收齐了 → 停止
+            if (m_context_.m_remain_content_length_ > 0
+                && read_idx >= m_context_.m_check_idx_ + m_context_.m_remain_content_length_) {
+                LOG_DEBUG("[read] body complete! read_idx=%d >= check_idx(%d)+remain(%d)=%d",
+                          read_idx, m_context_.m_check_idx_,
+                          m_context_.m_remain_content_length_,
+                          m_context_.m_check_idx_ + m_context_.m_remain_content_length_);
+                break;
+            }
         }
+        LOG_DEBUG("[read] exit ok, read_idx=%d remain_body=%d",
+                  read_idx, m_context_.m_remain_content_length_);
         return true;
     }
 
     StatusCode process_read() {
         auto ret = m_context_.parse_request(m_read_buffer_);
+        LOG_DEBUG("[process_read] parse returned %d, method=%s, path=%s, body_len=%d",
+                  static_cast<int>(ret),
+                  m_context_.m_request_.get_method() == Method::GET ? "GET" : "POST",
+                  m_context_.m_request_.get_path().c_str(),
+                  m_context_.m_request_.get_content_length());
 
         // 已收到完整请求，处理 keep-alive 与路由分发
         if (ret == StatusCode::SUCCESS) {

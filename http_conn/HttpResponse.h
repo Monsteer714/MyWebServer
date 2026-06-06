@@ -91,6 +91,7 @@ public:
         static const std::unordered_map<std::string, std::string> mime_types = {
             {".html", "text/html"},
             {".css", "text/css"},
+            {".txt", "text/plain"},
             {".js", "application/javascript"},
             {".json", "application/json"},
             {".png", "image/png"},
@@ -279,6 +280,14 @@ public:
             && write_header("Content-Length", std::to_string(std::strlen(body)).c_str())
             && write_blank_line()
             && write_body(body);
+    }
+
+    bool send_body(std::string body, const char* content_type) {
+        return reset(), write_status(200, ok_200_title)
+            && write_header("Content-Type", content_type)
+            && write_header("Content-Length", std::to_string(body.size()).c_str())
+            && write_blank_line()
+            && write_body(body.c_str());
     }
 
     // 重载: 非 null-terminated 的 body（如 JSON string 内部数据）

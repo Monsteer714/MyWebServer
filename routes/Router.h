@@ -26,12 +26,14 @@
 #define MYWEBSERVER_ROUTER_H
 
 #include <functional>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
-#include "HttpRequest.h"
-#include "HttpResponse.h"
+#include "../http_conn/HttpRequest.h"
+#include "../http_conn/HttpResponse.h"
+#include "RouteHandler.h"
 
 class Router {
 public:
@@ -66,7 +68,13 @@ public:
     // 同一个 path + 不同 method 可以注册不同的 handler:
     //   addRoute(GET,  "/api/data", getHandler);
     //   addRoute(POST, "/api/data", postHandler);
+    // 注册路由 — std::function 版本（lambda / 函数指针）
     void addRoute(Method method, const std::string& pattern, HandlerCallback handler);
+
+    // 注册路由 — 面向对象版本（RouteHandler 子类）
+    // Router 接管 handler 的所有权，在 Router 析构时自动释放
+    void addRoute(Method method, const std::string& pattern,
+                  std::unique_ptr<RouteHandler> handler);
 
     // =========================================================================
     // route — 路由分发
@@ -108,9 +116,9 @@ private:
     //   "posts"   == "posts"    → 精确匹配
     //   ":postId" 匹配 "42"     → 捕获为参数 postId="42"
     struct DynamicRoute {
-        Method method;                        // GET / POST
-        std::vector<std::string> tokens;      // 预分割的 token 数组
-        HandlerCallback handler;              // 处理函数
+        Method method; // GET / POST
+        std::vector<std::string> tokens; // 预分割的 token 数组
+        HandlerCallback handler; // 处理函数
     };
 
     std::vector<DynamicRoute> dynamic_routers;
@@ -134,12 +142,12 @@ private:
 // =============================================================================
 
 inline void Router::addRoute(Method method, const std::string& pattern,
-                               HandlerCallback handler) {
+                             HandlerCallback handler) {
     // pattern 包含 ':' → 动态路由
     if (pattern.find(':') != std::string::npos) {
         DynamicRoute dr;
         dr.method = method;
-        dr.tokens = splitPath(pattern);   // 预分割，避免每个请求重复分割
+        dr.tokens = splitPath(pattern); // 预分割，避免每个请求重复分割
         dr.handler = std::move(handler);
         dynamic_routers.push_back(std::move(dr));
         return;
@@ -147,6 +155,15 @@ inline void Router::addRoute(Method method, const std::string& pattern,
 
     // 不含 ':' → 静态路由，直接用 "METHOD:path" 作哈希 key
     static_routers[methodKey(method, pattern)] = std::move(handler);
+}
+
+inline void Router::addRoute(Method method, const std::string& pattern,
+                             std::unique_ptr<RouteHandler> h) {
+    auto shared = std::shared_ptr<RouteHandler>(std::move(h));
+    addRoute(method, pattern,
+             [shared](HttpRequest& req, HttpResponse& resp) -> bool {
+                 return shared->handle(req, resp);
+             });
 }
 
 inline bool Router::route(HttpRequest& req, HttpResponse& resp) {
@@ -185,7 +202,8 @@ inline bool Router::route(HttpRequest& req, HttpResponse& resp) {
                 // 例: route_token = ":id", path_token = "123"
                 //     → 存入 matched_params["id"] = "123"
                 matched_params[route_token.substr(1)] = path_token;
-            } else if (route_token != path_token) {
+            }
+            else if (route_token != path_token) {
                 // 静态段 —— 必须逐字符精确匹配
                 matched = false;
                 break;

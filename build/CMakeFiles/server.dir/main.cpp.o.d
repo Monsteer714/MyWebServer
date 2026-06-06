@@ -988,36 +988,33 @@ CMakeFiles/server.dir/main.cpp.o: \
   /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/http_conn/HttpConnect.h \
   /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/strings.h \
   /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/stat.h \
-  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/http_conn/../log/log.h \
+  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/http_conn/../log/async_log.h \
   /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/http_conn/../log/../locker/locker.h \
   /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/semaphore.h \
   /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/semaphore.h \
-  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/http_conn/../log/block_queue.h \
+  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/http_conn/../log/large_log_buffer.h \
   /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/http_conn/../timer/timer_lst.h \
   /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/mman.h \
   /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/uio.h \
   /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/http_conn/../timer/../log/log.h \
+  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/http_conn/../timer/../log/../locker/locker.h \
+  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/http_conn/../timer/../log/block_queue.h \
   /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/http_conn/../timer/timer_policy.h \
   /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/http_conn/HttpRequest.h \
   /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/http_conn/../util/types.h \
   /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/http_conn/HttpResponse.h \
   /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/http_conn/HttpContext.h \
-  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/http_conn/Router.h \
-  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/log/async_log.h \
-  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/log/../locker/locker.h \
-  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/log/large_log_buffer.h \
-  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/log/log.h \
-  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/threadpool/threadpool.h \
-  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/threadpool/../locker/locker.h \
-  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/threadpool/spsc_queue.h \
-  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/timer/timer_policy.h \
-  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/timer/timer_lst.h \
-  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/timer/timer_wheel.h \
-  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/timer/../log/log.h \
-  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/timer/../log/async_log.h \
-  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/util/types.h \
-  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/db_conn/user_auth.h \
-  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/db_conn/mysql_client.h \
+  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/http_conn/../routes/Router.h \
+  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/http_conn/../routes/../http_conn/HttpRequest.h \
+  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/http_conn/../routes/../http_conn/HttpResponse.h \
+  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/http_conn/../routes/RouteHandler.h \
+  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/http_conn/../routes/../util/types.h \
+  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/routes/routes.h \
+  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/routes/Router.h \
+  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/routes/RouteHandler.h \
+  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/routes/../http_conn/HttpRequest.h \
+  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/routes/../http_conn/HttpResponse.h \
+  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/routes/../db_conn/mysql_client.h \
   /usr/local/include/mysql/mysql.h \
   /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1/stdbool.h \
   /Library/Developer/CommandLineTools/usr/lib/clang/17/include/stdbool.h \
@@ -1032,7 +1029,9 @@ CMakeFiles/server.dir/main.cpp.o: \
   /usr/local/include/mysql/mysql_version.h \
   /usr/local/include/mysql/mysql_time.h \
   /usr/local/include/mysql/errmsg.h \
-  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/third_party/json.hpp \
+  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/routes/../db_conn/user_auth.h \
+  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/routes/../log/async_log.h \
+  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/routes/../third_party/json.hpp \
   /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1/forward_list \
   /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1/map \
   /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1/__tree \
@@ -1088,4 +1087,15 @@ CMakeFiles/server.dir/main.cpp.o: \
   /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1/execution \
   /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1/__type_traits/is_execution_policy.h \
   /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1/any \
+  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/log/async_log.h \
+  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/log/log.h \
+  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/threadpool/threadpool.h \
+  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/threadpool/../locker/locker.h \
+  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/threadpool/spsc_queue.h \
+  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/timer/timer_policy.h \
+  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/timer/timer_lst.h \
+  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/timer/timer_wheel.h \
+  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/timer/../log/log.h \
+  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/timer/../log/async_log.h \
+  /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/util/types.h \
   /Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/config.h

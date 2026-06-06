@@ -14,6 +14,7 @@
 #include <sys/epoll.h>
 
 #include "http_conn/HttpConnect.h"
+#include "routes/routes.h"
 #include "log/async_log.h"
 #include "log/log.h"
 #include "threadpool/threadpool.h"
@@ -21,8 +22,6 @@
 #include "timer/timer_lst.h"
 #include "timer/timer_wheel.h"
 #include "util/types.h"
-#include "db_conn/user_auth.h"
-#include "third_party/json.hpp"
 
 
 //threads number for thread pool
@@ -33,8 +32,6 @@ constexpr int MAX_FD = 65535;
 constexpr int TIME_SLOT = 5;
 //epoll table size
 constexpr int MAX_EVENT_NUM = 10000;
-
-using json = nlohmann::json;
 
 class WebServer {
 private:
@@ -114,112 +111,9 @@ public:
         }
     }
 
-    // =========================================================================
-    // 注册所有路由（静态 + 动态）
-    // 在 start() 中调用，确保服务器启动前路由表已就绪
-    // =========================================================================
     void registerRoutes() {
-        // ---- 静态路由: GET /hello → 返回纯文本问候 ----
-        m_router_.addRoute(Method::GET, "/hello",
-                           [](HttpRequest& req, HttpResponse& resp) {
-                               return resp.send_body(
-                                   "<html><body><h1>Hello from Router!</h1>"
-                                   "<p>这是一条静态路由响应。</p></body></html>",
-                                   "text/html; charset=utf-8");
-                           });
-
-        // ---- 静态路由: GET /api/status → 返回 JSON 状态信息 ----
-        m_router_.addRoute(Method::GET, "/api/status",
-                           [](HttpRequest& req, HttpResponse& resp) {
-                               return resp.send_body(
-                                   "{ \"status\": \"ok\", \"server\": \"MyWebServer\", "
-                                   "\"routes\": \"static + dynamic\" }",
-                                   "application/json");
-                           });
-
-        // ---- 动态路由: GET /users/:id → 返回用户信息 JSON ----
-        // 例: /users/123 → {"user_id":"123","name":"User-123"}
-        m_router_.addRoute(Method::GET, "/users/:id",
-                           [](HttpRequest& req, HttpResponse& resp) {
-                               auto userId = req.get_path_parameters("id");
-                               std::string body = R"({ "user_id": ")" + userId +
-                                   R"(", "name": "User-)" + userId + "\" }";
-                               return resp.send_body(body.c_str(), body.size(),
-                                                     "application/json");
-                           });
-
-        // ---- 嵌套动态路由: GET /posts/:postId/comments/:commentId ----
-        // 例: /posts/42/comments/7 → 展示两个动态参数
-        m_router_.addRoute(Method::GET, "/posts/:postId/comments/:commentId",
-                           [](HttpRequest& req, HttpResponse& resp) {
-                               auto postId = req.get_path_parameters("postId");
-                               auto commentId = req.get_path_parameters("commentId");
-                               std::string body = "<html><body>"
-                                   "<h1>嵌套动态路由测试</h1>"
-                                   "<p>Post ID: <strong>" + postId + "</strong></p>"
-                                   "<p>Comment ID: <strong>" + commentId + "</strong></p>"
-                                   "</body></html>";
-                               return resp.send_body(body.c_str(), body.size(),
-                                                     "text/html; charset=utf-8");
-                           });
-
-        // ---- 动态路由: GET /download/:filename → sendfile 零拷贝文件下载 ----
-        // send_file() 一行搞定: 打开文件 → 写头 → sendfile 发送
-        // 文件不存在时自动返回 404
-        m_router_.addRoute(Method::GET, "/download/:filename",
-                           [](HttpRequest& req, HttpResponse& resp) {
-                               auto filename = req.get_path_parameters("filename");
-                               return resp.send_file("./root/" + filename,
-                                                     "application/octet-stream",
-                                                     filename.c_str());
-                           });
-
-        m_router_.addRoute(Method::POST, "/api/register",
-                           [&](HttpRequest& req, HttpResponse& resp) -> bool {
-                               auto body = req.get_content();
-
-                               //parse json.
-                               json register_info = json::parse(body);
-
-                               const std::string username = register_info["username"];
-                               const std::string password = register_info["password"];
-                               int uid = user_register(m_mysql_client_, username, password);
-                               if (uid == -1) {
-                                   return resp.send_body(
-                                       R"({"status":"error","message":"user exists"})",
-                                       "application/json");
-                               }
-                               std::string success = R"({"status":"ok","message":"success"})";
-                               return resp.send_body(success.c_str(), success.size(), "application/json");
-                           });
-
-        m_router_.addRoute(Method::POST, "/api/login",
-                           [&](HttpRequest& req, HttpResponse& resp) -> bool {
-                               auto body = req.get_content();
-
-                               json login_info = json::parse(body);
-
-                               const std::string username = login_info["username"];
-                               const std::string password = login_info["password"];
-                               auto uinfo = user_login(m_mysql_client_, username, password);
-                               if (uinfo == std::nullopt) {
-                                   return resp.send_body(R"({"status":"error","message":"user not exist"})",
-                                                         "application/json");
-                               }
-
-                               json success;
-                               success["status"] = "success";
-                               success["message"] = "login successfully";
-                               success["username"] = username;
-                               return resp.send_body(success.dump().c_str(), success.dump().size(), "application/json");
-                           });
-
-        // ---- 静态路由: GET / → 返回 false，让 do_request() 走文件服务 ----
-        // Router 不处理首页，退回给文件服务读取 root/index.html
-        m_router_.addRoute(Method::GET, "/",
-                           [](HttpRequest& req, HttpResponse& resp) {
-                               return false; // 故意不处理，退回文件服务
-                           });
+        // 所有路由定义在 http_conn/routes.h 中，按 RouteHandler 子类组织
+        registerAllRoutes(m_router_, m_mysql_client_);
     }
 
     void start() {

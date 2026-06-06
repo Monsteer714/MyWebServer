@@ -11,10 +11,10 @@ Config::Config() {
     Config::PORT = 8888;
 
     //日志模型，0: 阻塞队列，1:双缓冲；
-    Config::LOG_MODEL = 0;
+    Config::LOG_MODEL = 1;
 
     //组合触发方式，0:服务端LT，客户端LT；1:服务端ET，客户端LT；2:服务端LT，客户端ET；3:服务端ET，客户端ET；
-    Config::TRIG_MODE = 0;
+    Config::TRIG_MODE = 3;
 
     //并发模型，0：Reactor，1:Proactor;
     Config::ACTOR_MODEL = 0;
@@ -23,7 +23,7 @@ Config::Config() {
     Config::LOG_CLOSE = 0;
 
     //定时器模式，0:升序链表；1:时间轮；2:时间堆；3：共享红黑树；
-    Config::TIMER_MODEL = 0;
+    Config::TIMER_MODEL = 1;
 }
 
 void Config::parse_args(int argc, char* argv[]) {
