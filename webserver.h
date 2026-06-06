@@ -22,6 +22,7 @@
 #include "timer/timer_wheel.h"
 #include "util/types.h"
 #include "db_conn/user_auth.h"
+#include "third_party/json.hpp"
 
 
 //threads number for thread pool
@@ -32,6 +33,8 @@ constexpr int MAX_FD = 65535;
 constexpr int TIME_SLOT = 5;
 //epoll table size
 constexpr int MAX_EVENT_NUM = 10000;
+
+using json = nlohmann::json;
 
 class WebServer {
 private:
@@ -172,22 +175,44 @@ public:
                            });
 
         m_router_.addRoute(Method::POST, "/api/register",
-                            [&](HttpRequest& req, HttpResponse& resp) -> bool {
-                                auto body = req.get_content();
+                           [&](HttpRequest& req, HttpResponse& resp) -> bool {
+                               auto body = req.get_content();
 
-                                //parse json.
+                               //parse json.
+                               json register_info = json::parse(body);
 
-                                const std::string username = "test";
-                                const std::string password = "123";
-                                int uid = user_register(m_mysql_client_, username, password);
-                                if (uid == -1) {
-                                    return resp.send_body(
-                                        R"({"status":"error","message":"user exists"})",
-                                        "application/json");
-                                }
-                                std::string success = R"({"status":"ok","message":"success"})";
-                                return resp.send_body(success.c_str(), success.size(), "application/json");
-                            });
+                               const std::string username = register_info["username"];
+                               const std::string password = register_info["password"];
+                               int uid = user_register(m_mysql_client_, username, password);
+                               if (uid == -1) {
+                                   return resp.send_body(
+                                       R"({"status":"error","message":"user exists"})",
+                                       "application/json");
+                               }
+                               std::string success = R"({"status":"ok","message":"success"})";
+                               return resp.send_body(success.c_str(), success.size(), "application/json");
+                           });
+
+        m_router_.addRoute(Method::POST, "/api/login",
+                           [&](HttpRequest& req, HttpResponse& resp) -> bool {
+                               auto body = req.get_content();
+
+                               json login_info = json::parse(body);
+
+                               const std::string username = login_info["username"];
+                               const std::string password = login_info["password"];
+                               auto uinfo = user_login(m_mysql_client_, username, password);
+                               if (uinfo == std::nullopt) {
+                                   return resp.send_body(R"({"status":"error","message":"user not exist"})",
+                                                         "application/json");
+                               }
+
+                               json success;
+                               success["status"] = "success";
+                               success["message"] = "login successfully";
+                               success["username"] = username;
+                               return resp.send_body(success.dump().c_str(), success.dump().size(), "application/json");
+                           });
 
         // ---- 静态路由: GET / → 返回 false，让 do_request() 走文件服务 ----
         // Router 不处理首页，退回给文件服务读取 root/index.html

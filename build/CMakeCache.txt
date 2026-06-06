@@ -225,6 +225,12 @@ EPOLL_SHIM_INCLUDE_DIR:PATH=/usr/local/include/libepoll-shim
 //Path to a library.
 EPOLL_SHIM_LIB:FILEPATH=/usr/local/lib/libepoll-shim.dylib
 
+//Path to a file.
+MYSQL_INCLUDE:PATH=/usr/local/include
+
+//Path to a library.
+MYSQL_LIB:FILEPATH=/usr/local/opt/mysql/lib/libmysqlclient.dylib
+
 //Value Computed by CMake
 MyWebServer_BINARY_DIR:STATIC=/Users/monsteer/Desktop/codes/Learning_Projects/MyWebServer/build
 

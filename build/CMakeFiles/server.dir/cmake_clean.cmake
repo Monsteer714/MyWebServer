@@ -7,6 +7,8 @@ file(REMOVE_RECURSE
   "CMakeFiles/server.dir/log/log.cpp.o.d"
   "CMakeFiles/server.dir/main.cpp.o"
   "CMakeFiles/server.dir/main.cpp.o.d"
+  "CMakeFiles/server.dir/middleware/middleware_log.cpp.o"
+  "CMakeFiles/server.dir/middleware/middleware_log.cpp.o.d"
   "CMakeFiles/server.dir/timer/timer_lst.cpp.o"
   "CMakeFiles/server.dir/timer/timer_lst.cpp.o.d"
   "CMakeFiles/server.dir/timer/timer_wheel.cpp.o"

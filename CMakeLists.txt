@@ -50,5 +50,25 @@ add_executable(server main.cpp
 
 add_executable(http_test http_conn/HttpTest.cpp)
 
-target_link_libraries(server Threads::Threads ${EPOLL_SHIM_LIB})
+# ---- MySQL 库 ----
+if(APPLE)
+    set(MYSQL_HINTS /usr/local/opt/mysql /opt/homebrew/opt/mysql)
+    find_library(MYSQL_LIB mysqlclient HINTS ${MYSQL_HINTS} PATH_SUFFIXES lib)
+    find_path(MYSQL_INCLUDE mysql/mysql.h HINTS ${MYSQL_HINTS} PATH_SUFFIXES include/mysql)
+else()
+    find_library(MYSQL_LIB mysqlclient)
+    find_path(MYSQL_INCLUDE mysql/mysql.h)
+endif()
+
+if(MYSQL_LIB AND MYSQL_INCLUDE)
+    include_directories(${MYSQL_INCLUDE})
+    set(MYSQL_LINK_LIB ${MYSQL_LIB})
+    message(STATUS "MySQL support enabled: ${MYSQL_LIB}")
+else()
+    set(MYSQL_LINK_LIB "")
+    message(WARNING "MySQL not found — auth routes disabled")
+endif()
+
+
+target_link_libraries(server Threads::Threads ${EPOLL_SHIM_LIB} ${MYSQL_LINK_LIB})
 

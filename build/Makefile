@@ -262,6 +262,30 @@ main.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/server.dir/build.make CMakeFiles/server.dir/main.cpp.s
 .PHONY : main.cpp.s
 
+middleware/middleware_log.o: middleware/middleware_log.cpp.o
+.PHONY : middleware/middleware_log.o
+
+# target to build an object file
+middleware/middleware_log.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/server.dir/build.make CMakeFiles/server.dir/middleware/middleware_log.cpp.o
+.PHONY : middleware/middleware_log.cpp.o
+
+middleware/middleware_log.i: middleware/middleware_log.cpp.i
+.PHONY : middleware/middleware_log.i
+
+# target to preprocess a source file
+middleware/middleware_log.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/server.dir/build.make CMakeFiles/server.dir/middleware/middleware_log.cpp.i
+.PHONY : middleware/middleware_log.cpp.i
+
+middleware/middleware_log.s: middleware/middleware_log.cpp.s
+.PHONY : middleware/middleware_log.s
+
+# target to generate assembly for a file
+middleware/middleware_log.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/server.dir/build.make CMakeFiles/server.dir/middleware/middleware_log.cpp.s
+.PHONY : middleware/middleware_log.cpp.s
+
 timer/timer_lst.o: timer/timer_lst.cpp.o
 .PHONY : timer/timer_lst.o
 
@@ -359,6 +383,9 @@ help:
 	@echo "... main.o"
 	@echo "... main.i"
 	@echo "... main.s"
+	@echo "... middleware/middleware_log.o"
+	@echo "... middleware/middleware_log.i"
+	@echo "... middleware/middleware_log.s"
 	@echo "... timer/timer_lst.o"
 	@echo "... timer/timer_lst.i"
 	@echo "... timer/timer_lst.s"

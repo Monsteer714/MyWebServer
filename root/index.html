@@ -267,13 +267,57 @@
         .auth-msg.error   { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
         .auth-msg.info    { background: #e7f3ff; color: #004085; border: 1px solid #b8daff; }
 
+    
+        /* ---- 文件上传 ---- */
+        .upload-area {
+            border: 2px dashed var(--border);
+            border-radius: 12px;
+            padding: 30px; text-align: center;
+            cursor: pointer; transition: all 0.2s;
+            background: #fafbfc; margin-bottom: 16px;
+        }
+        .upload-area:hover, .upload-area.drag-over {
+            border-color: var(--primary); background: #eef4fb;
+        }
+        .upload-area .upload-icon { font-size: 36px; margin-bottom: 8px; }
+        .upload-area .upload-text { font-size: 14px; color: var(--text-secondary); }
+        .upload-area .upload-hint { font-size: 12px; color: #aaa; margin-top: 4px; }
+        .upload-area input[type="file"] { display: none; }
+        .file-preview {
+            display: flex; align-items: center; gap: 10px;
+            padding: 10px 14px; background: #f0f8f0; border-radius: 8px;
+            font-size: 13px; margin-bottom: 12px; display: none;
+        }
+        .file-preview.visible { display: flex; }
+        .file-preview .file-name { flex: 1; font-family: monospace; }
+        .file-preview .file-size { color: var(--text-secondary); }
+        .upload-progress {
+            height: 6px; background: #e0e0e0; border-radius: 3px;
+            margin: 10px 0; overflow: hidden; display: none;
+        }
+        .upload-progress.visible { display: block; }
+        .upload-progress .bar {
+            height: 100%; width: 0; background: var(--primary);
+            border-radius: 3px; transition: width 0.3s;
+        }
+        .download-row {
+            display: flex; gap: 8px; margin-top: 16px;
+            padding-top: 16px; border-top: 1px solid var(--border);
+        }
+        .download-row input {
+            flex: 1; padding: 10px 14px; border: 1px solid var(--border);
+            border-radius: 8px; font-size: 14px; font-family: monospace;
+            outline: none;
+        }
+        .download-row input:focus { border-color: var(--primary); }
+
     </style>
 </head>
 <body>
 
 <div class="header">
     <h1>MyWebServer 测试面板</h1>
-    <p>动态路由 · MIME 类型 · 登录注册 · 静态文件服务 — 一键验证</p>
+    <p>动态路由 · MIME 类型 · 登录注册 · 文件上传下载 · 静态文件服务 — 一键验证</p>
 </div>
 
 <div class="container">
@@ -401,6 +445,54 @@
                 <button type="submit" class="btn btn--primary btn--block" id="btn-login">登录</button>
                 <div class="auth-msg" id="login-msg"></div>
             </form>
+        </div>
+    </div>
+
+
+    <!-- ==================== 文件上传 / 下载测试 ==================== -->
+    <div class="card">
+        <div class="card-header">
+            <span class="icon">📁</span> 文件上传 / 下载测试
+            <span style="font-weight:400;font-size:12px;color:#999;margin-left:auto;">multipart POST / GET download</span>
+        </div>
+        <div class="card-body">
+            <p style="margin-bottom:16px;color:var(--text-secondary);font-size:14px;">
+                选择一个文件上传到服务器（<code>POST /api/upload</code>，<code>multipart/form-data</code>），
+                或输入文件 UUID 下载已上传的文件（<code>GET /files/:uuid</code>，走 sendfile 零拷贝）。
+            </p>
+
+            <!-- 上传区域 -->
+            <div class="upload-area" id="upload-area" onclick="document.getElementById('file-input').click()">
+                <div class="upload-icon">📤</div>
+                <div class="upload-text">点击选择文件 或 拖拽文件到此处</div>
+                <div class="upload-hint">支持任意类型文件，最大 50MB</div>
+                <input type="file" id="file-input" onchange="onFileSelected(event)">
+            </div>
+
+            <!-- 文件预览 -->
+            <div class="file-preview" id="file-preview">
+                <span style="font-size:20px;">📎</span>
+                <span class="file-name" id="file-preview-name"></span>
+                <span class="file-size" id="file-preview-size"></span>
+                <button class="btn btn--primary" id="btn-upload" onclick="handleUpload()">上传</button>
+            </div>
+
+            <!-- 上传进度条 -->
+            <div class="upload-progress" id="upload-progress">
+                <div class="bar" id="upload-bar"></div>
+            </div>
+
+            <!-- 上传结果 -->
+            <div class="auth-msg" id="upload-msg"></div>
+
+            <!-- 下载区域 -->
+            <div class="download-row">
+                <input type="text" id="download-uuid"
+                       placeholder="输入文件 UUID，如 a1b2c3d4-..."
+                       style="flex:1;">
+                <button class="btn btn--primary" id="btn-download" onclick="handleDownload()">下载</button>
+            </div>
+            <div class="auth-msg" id="download-msg" style="margin-top:10px;"></div>
         </div>
     </div>
 
@@ -693,6 +785,205 @@ function switchAuthTab(tab) {
         document.querySelector('.auth-tab:nth-child(2)').classList.add('active');
         document.getElementById('form-login').classList.add('active');
     }
+}
+
+
+// ---- 文件选择 ----
+let selectedFile = null;
+function onFileSelected(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    selectedFile = file;
+    document.getElementById('file-preview-name').textContent = file.name;
+    document.getElementById('file-preview-size').textContent = formatSize(file.size);
+    document.getElementById('file-preview').classList.add('visible');
+    document.getElementById('upload-area').style.display = 'none';
+    document.getElementById('upload-msg').classList.remove('visible');
+}
+
+function formatSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / 1048576).toFixed(1) + ' MB';
+}
+
+// ---- 文件上传 (multipart/form-data) ----
+async function handleUpload() {
+    if (!selectedFile) return;
+
+    const btn = document.getElementById('btn-upload');
+    const msg = document.getElementById('upload-msg');
+    const bar = document.getElementById('upload-bar');
+    const progress = document.getElementById('upload-progress');
+
+    btn.textContent = '上传中...';
+    btn.disabled = true;
+    msg.classList.remove('visible');
+    progress.classList.add('visible');
+    bar.style.width = '0%';
+
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+
+    const start = performance.now();
+    let result;
+    try {
+        const xhr = new XMLHttpRequest();
+        xhr.upload.onprogress = (e) => {
+            if (e.lengthComputable) {
+                bar.style.width = (e.loaded / e.total * 100).toFixed(1) + '%';
+            }
+        };
+        const resp = await new Promise((resolve, reject) => {
+            xhr.open('POST', '/api/upload');
+            xhr.onload  = () => resolve(xhr);
+            xhr.onerror = () => reject(new Error('网络错误'));
+            xhr.send(formData);
+        });
+        const time = (performance.now() - start).toFixed(1);
+
+        result = {
+            status: resp.status,
+            statusText: resp.statusText,
+            body: resp.responseText,
+            time
+        };
+    } catch (e) {
+        result = { error: true, message: e.message };
+    }
+
+    // 显示结果
+    msg.classList.add('visible');
+    progress.classList.remove('visible');
+
+    if (result.error) {
+        msg.className = 'auth-msg error visible';
+        msg.textContent = '上传失败: ' + result.message;
+    } else if (result.status === 200 || result.status === 201) {
+        msg.className = 'auth-msg success visible';
+        try {
+            const data = JSON.parse(result.body);
+            msg.innerHTML = '上传成功 (' + result.status + ', ' + result.time + 'ms)<br>'
+                          + '文件 UUID: <code>' + escapeHtml(data.uuid || data.file_id || '?') + '</code><br>'
+                          + '响应: ' + escapeHtml(JSON.stringify(data, null, 2));
+            // 自动填入下载框
+            if (data.uuid) {
+                document.getElementById('download-uuid').value = data.uuid;
+            }
+        } catch (e) {
+            msg.innerHTML = '上传成功 (' + result.status + ', ' + result.time + 'ms)<br>'
+                          + '响应: ' + escapeHtml(result.body);
+        }
+    } else if (result.status === 404) {
+        msg.className = 'auth-msg info visible';
+        msg.textContent = '后端路由未实现 (404) — 等待服务器添加文件上传模块';
+    } else {
+        msg.className = 'auth-msg error visible';
+        msg.innerHTML = 'HTTP ' + result.status + ' ' + result.statusText + '<br>'
+                      + escapeHtml(result.body);
+    }
+
+    btn.textContent = '上传';
+    btn.disabled = false;
+
+    // 重置
+    selectedFile = null;
+    document.getElementById('file-preview').classList.remove('visible');
+    document.getElementById('upload-area').style.display = '';
+    document.getElementById('file-input').value = '';
+}
+
+// ---- 拖拽上传 ----
+const uploadArea = document.getElementById('upload-area');
+uploadArea.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    uploadArea.classList.add('drag-over');
+});
+uploadArea.addEventListener('dragleave', () => {
+    uploadArea.classList.remove('drag-over');
+});
+uploadArea.addEventListener('drop', (e) => {
+    e.preventDefault();
+    uploadArea.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file) {
+        selectedFile = file;
+        document.getElementById('file-preview-name').textContent = file.name;
+        document.getElementById('file-preview-size').textContent = formatSize(file.size);
+        document.getElementById('file-preview').classList.add('visible');
+        uploadArea.style.display = 'none';
+        document.getElementById('upload-msg').classList.remove('visible');
+    }
+});
+
+// ---- 文件下载 ----
+async function handleDownload() {
+    const uuid = document.getElementById('download-uuid').value.trim();
+    const msg = document.getElementById('download-msg');
+    const btn = document.getElementById('btn-download');
+
+    if (!uuid) {
+        msg.className = 'auth-msg error visible';
+        msg.textContent = '请输入文件 UUID';
+        return;
+    }
+
+    btn.textContent = '下载中...';
+    btn.disabled = true;
+    msg.className = 'auth-msg info visible';
+    msg.textContent = 'GET /files/' + uuid + ' ...';
+
+    const start = performance.now();
+    let resp;
+    try {
+        resp = await fetch('/files/' + uuid);
+    } catch (e) {
+        msg.className = 'auth-msg error visible';
+        msg.textContent = '网络错误: ' + e.message;
+        btn.textContent = '下载';
+        btn.disabled = false;
+        return;
+    }
+    const time = (performance.now() - start).toFixed(1);
+
+    if (resp.status === 200) {
+        const ct = resp.headers.get('Content-Type') || '?';
+        const size = resp.headers.get('Content-Length') || '?';
+        // 对于文本文件显示内容，二进制文件用 Blob 下载
+        const blob = await resp.blob();
+        msg.className = 'auth-msg success visible';
+        msg.innerHTML = '下载成功 (' + resp.status + ', ' + time + 'ms)<br>'
+                      + 'Content-Type: ' + escapeHtml(ct) + '<br>'
+                      + 'Content-Length: ' + size + ' bytes (' + formatSize(blob.size) + ')';
+
+        // 如果文件很小且是文本类型，预览内容
+        if (blob.size < 5000 && (ct.startsWith('text/') || ct.includes('json') || ct.includes('javascript'))) {
+            const text = await blob.text();
+            const preview = document.createElement('div');
+            preview.className = 'result-body';
+            preview.style.marginTop = '8px';
+            preview.style.maxHeight = '200px';
+            preview.textContent = text;
+            msg.appendChild(preview);
+        } else {
+            // 触发浏览器下载
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = uuid;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+    } else if (resp.status === 404) {
+        msg.className = 'auth-msg info visible';
+        msg.textContent = '后端路由未实现 (404) — 等待服务器添加文件下载模块';
+    } else {
+        msg.className = 'auth-msg error visible';
+        msg.textContent = 'HTTP ' + resp.status + ' ' + resp.statusText;
+    }
+
+    btn.textContent = '下载';
+    btn.disabled = false;
 }
 
 </script>
