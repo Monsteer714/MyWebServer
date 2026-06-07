@@ -13,6 +13,7 @@
 
 #include "Router.h"
 #include "RouteHandler.h"
+#include "upload_routes.h"
 #include "../http_conn/HttpRequest.h"
 #include "../http_conn/HttpResponse.h"
 #include "../db_conn/mysql_client.h"
@@ -89,7 +90,7 @@ public:
 
     bool handle(HttpRequest& req, HttpResponse& resp) override {
         auto body = req.get_content();
-        json register_info = json::parse(body);
+        json register_info = safe_parse(body);
         std::string username = register_info["username"];
         std::string password = register_info["password"];
 
@@ -117,7 +118,7 @@ public:
 
     bool handle(HttpRequest& req, HttpResponse& resp) override {
         auto body = req.get_content();
-        json login_info = json::parse(body);
+        json login_info = safe_parse(body);
         std::string username = login_info["username"];
         std::string password = login_info["password"];
 
@@ -290,6 +291,9 @@ public:
 // =============================================================================
 // 由 webserver.h 调用，所有路由在此集中管理
 inline void registerAllRoutes(Router& router, MySQLClient& db) {
+    // ---- 分片上传路由（断点续传 + 多线程）----
+    registerUploadRoutes(router);
+
     // ---- 静态路由 ----
     router.addRoute(Method::GET, "/", std::make_unique<IndexHandler>());
     router.addRoute(Method::GET, "/hello", std::make_unique<HelloHandler>());

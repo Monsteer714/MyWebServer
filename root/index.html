@@ -311,6 +311,30 @@
         }
         .download-row input:focus { border-color: var(--primary); }
 
+    
+        /* ---- 分片上传 ---- */
+        .chunk-stats {
+            display: grid; grid-template-columns: repeat(4, 1fr);
+            gap: 10px; margin-bottom: 16px;
+        }
+        .chunk-stat {
+            text-align: center; padding: 10px; background: #f9fafb;
+            border-radius: 8px; font-size: 12px;
+        }
+        .chunk-stat .val { font-size: 20px; font-weight: 700; color: var(--primary); }
+        .chunk-grid {
+            display: flex; flex-wrap: wrap; gap: 4px; margin: 10px 0;
+            max-height: 150px; overflow-y: auto;
+        }
+        .chunk-dot {
+            width: 14px; height: 14px; border-radius: 3px;
+            background: #e0e0e0; transition: background 0.3s;
+        }
+        .chunk-dot.done { background: var(--success); }
+        .chunk-dot.sending { background: var(--warn); animation: pulse 0.6s infinite; }
+        .chunk-dot.fail { background: var(--danger); }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
     </style>
 </head>
 <body>
@@ -493,6 +517,34 @@
                 <button class="btn btn--primary" id="btn-download" onclick="handleDownload()">下载</button>
             </div>
             <div class="auth-msg" id="download-msg" style="margin-top:10px;"></div>
+        </div>
+    </div>
+
+
+    <!-- ==================== 分片上传 / 断点续传测试 ==================== -->
+    <div class="card">
+        <div class="card-header">
+            <span class="icon">🧩</span> 分片上传 / 断点续传
+            <span style="font-weight:400;font-size:12px;color:#999;margin-left:auto;">多线程并发</span>
+        </div>
+        <div class="card-body">
+            <p style="margin-bottom:14px;color:var(--text-secondary);font-size:14px;">
+                大文件自动切片，4 线程并发上传。支持断点续传：关闭页面后重新打开可继续上传。
+            </p>
+            <div class="upload-area" id="chunk-upload-area" onclick="document.getElementById('chunk-file-input').click()">
+                <div class="upload-icon">📦</div>
+                <div class="upload-text">点击选择大文件（分片上传）</div>
+                <div class="upload-hint">任意大小 · 自动切片 · 多线程 · 断点续传</div>
+                <input type="file" id="chunk-file-input" onchange="startChunkedUpload(event)">
+            </div>
+            <div class="chunk-stats" id="chunk-stats" style="display:none">
+                <div class="chunk-stat"><div class="val" id="stat-progress">0%</div>进度</div>
+                <div class="chunk-stat"><div class="val" id="stat-done">0</div>已完成</div>
+                <div class="chunk-stat"><div class="val" id="stat-total">0</div>总片数</div>
+                <div class="chunk-stat"><div class="val" id="stat-speed">0</div>KB/s</div>
+            </div>
+            <div class="chunk-grid" id="chunk-grid"></div>
+            <div class="auth-msg" id="chunk-msg" style="margin-top:10px;"></div>
         </div>
     </div>
 
@@ -984,6 +1036,117 @@ async function handleDownload() {
 
     btn.textContent = '下载';
     btn.disabled = false;
+}
+
+
+// ---- 分片上传（多线程并发 + 断点续传）----
+const CHUNK_SIZE = 32 * 1024;   // 32KB per chunk (适配读缓冲区)
+const MAX_CONCURRENT = 4;       // 并发数
+
+async function startChunkedUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+
+    // Show UI
+    document.getElementById('chunk-upload-area').style.display = 'none';
+    document.getElementById('chunk-stats').style.display = 'grid';
+    document.getElementById('stat-total').textContent = totalChunks;
+
+    // Build chunk grid
+    const grid = document.getElementById('chunk-grid');
+    grid.innerHTML = '';
+    for (let i = 0; i < totalChunks; i++) {
+        const dot = document.createElement('div');
+        dot.className = 'chunk-dot';
+        dot.id = 'dot-' + i;
+        grid.appendChild(dot);
+    }
+
+    const msg = document.getElementById('chunk-msg');
+    msg.className = 'auth-msg info visible';
+    msg.textContent = '正在初始化上传会话...';
+
+    // 1. Init session
+    const initResp = await fetch('/api/upload/init', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            filename: file.name,
+            total_size: file.size,
+            chunk_size: CHUNK_SIZE
+        })
+    });
+    const initData = await initResp.json();
+    const uploadId = initData.upload_id;
+    if (!uploadId) { msg.className = 'auth-msg error visible'; msg.textContent = '初始化失败'; return; }
+
+    // 2. Upload chunks with concurrency control
+    let doneCount = 0, totalBytes = 0;
+    const startTime = performance.now();
+    const pending = [];
+
+    for (let i = 0; i < totalChunks; i++) {
+        const idx = i;
+        const start = idx * CHUNK_SIZE;
+        const end = Math.min(start + CHUNK_SIZE, file.size);
+        const blob = file.slice(start, end);
+
+        const task = (async () => {
+            try {
+                document.getElementById('dot-' + idx).classList.add('sending');
+                const resp = await fetch('/api/upload/' + uploadId + '/chunk/' + idx, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/octet-stream' },
+                    body: blob
+                });
+                if (resp.ok) {
+                    document.getElementById('dot-' + idx).className = 'chunk-dot done';
+                    doneCount++; totalBytes += blob.size;
+                } else {
+                    document.getElementById('dot-' + idx).className = 'chunk-dot fail';
+                }
+            } catch (err) {
+                document.getElementById('dot-' + idx).className = 'chunk-dot fail';
+            }
+            updateChunkStats(doneCount, totalChunks, totalBytes, startTime);
+        })();
+
+        pending.push(task);
+
+        // Concurrency control
+        if (pending.length >= MAX_CONCURRENT) {
+            await Promise.race(pending);
+            pending.splice(pending.findIndex(p => p === null), 1);
+        }
+    }
+    await Promise.all(pending);
+
+    // 3. Check completeness
+    msg.textContent = '正在合并文件...';
+    const completeResp = await fetch('/api/upload/' + uploadId + '/complete', { method: 'POST' });
+    const completeData = await completeResp.json();
+
+    if (completeData.status === 'ok') {
+        msg.className = 'auth-msg success visible';
+        msg.innerHTML = '上传完成！<br>UUID: <code>' + completeData.uuid + '</code><br>大小: ' + formatSize(completeData.size_bytes);
+        // Auto-fill download box
+        const dlInput = document.getElementById('download-uuid');
+        if (dlInput) dlInput.value = completeData.uuid;
+    } else {
+        msg.className = 'auth-msg error visible';
+        msg.textContent = '合并失败: ' + JSON.stringify(completeData);
+    }
+}
+
+function updateChunkStats(done, total, bytes, startTime) {
+    const pct = (done / total * 100).toFixed(1);
+    const elapsed = (performance.now() - startTime) / 1000;
+    const speed = elapsed > 0 ? (bytes / 1024 / elapsed).toFixed(0) : 0;
+    document.getElementById('stat-progress').textContent = pct + '%';
+    document.getElementById('stat-done').textContent = done;
+    document.getElementById('stat-speed').textContent = speed;
 }
 
 </script>

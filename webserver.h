@@ -27,7 +27,7 @@
 //threads number for thread pool
 constexpr int THREAD_NUM = 8;
 //max connect number
-constexpr int MAX_FD = 65535;
+constexpr int MAX_FD = 1024;
 //time spand for one tick
 constexpr int TIME_SLOT = 5;
 //epoll table size

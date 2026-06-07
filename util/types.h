@@ -6,7 +6,7 @@
 #define MYWEBSERVER_TYPES_H
 
 
-constexpr static int READ_BUFFER_SIZE = 65536;  // 64KB，足够容纳 multipart 上传
+constexpr static int READ_BUFFER_SIZE = 65536;  // 64KB
 constexpr static int WRITE_BUFFER_SIZE = 8192;  // 8KB，足够容纳路由 handler 的完整 HTTP 响应
 
 
